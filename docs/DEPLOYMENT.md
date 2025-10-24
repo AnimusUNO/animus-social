@@ -1,6 +1,6 @@
-# Sanctum Social Deployment Guide
+# Animus Social Deployment Guide
 
-This guide provides comprehensive instructions for deploying Sanctum Social in various environments, from development to production.
+This guide provides comprehensive instructions for deploying Animus Social in various environments, from development to production.
 
 ## Table of Contents
 
@@ -985,4 +985,4 @@ For deployment issues and support:
 - **Community**: Join discussions on GitHub Discussions
 - **Contact**: Reach out to maintainers for support
 
-This deployment guide provides comprehensive instructions for deploying Sanctum Social in various environments. Choose the deployment method that best fits your needs and infrastructure requirements.
+This deployment guide provides comprehensive instructions for deploying Animus Social in various environments. Choose the deployment method that best fits your needs and infrastructure requirements.

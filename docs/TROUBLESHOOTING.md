@@ -1,6 +1,6 @@
-# Sanctum Social Troubleshooting Guide
+# Animus Social Troubleshooting Guide
 
-This guide provides solutions for common issues encountered when using Sanctum Social.
+This guide provides solutions for common issues encountered when using Animus Social.
 
 ## Table of Contents
 
@@ -554,7 +554,7 @@ QueueError: Processing stuck
 
 #### Automatic Recovery
 
-Sanctum Social includes automatic error recovery:
+Animus Social includes automatic error recovery:
 
 ```python
 # Retry with exponential backoff
@@ -727,7 +727,7 @@ When reporting issues, include:
 1. **Error Message**: Complete error message
 2. **Configuration**: Relevant configuration sections
 3. **Logs**: Relevant log entries
-4. **Environment**: OS, Python version, Sanctum Social version
+4. **Environment**: OS, Python version, Animus Social version
 5. **Steps to Reproduce**: Detailed steps to reproduce the issue
 
 ### Issue Template
@@ -745,7 +745,7 @@ What you expected to happen.
 **Environment**
 - OS: [e.g., Ubuntu 20.04]
 - Python version: [e.g., 3.9.7]
-- Sanctum Social version: [e.g., 2.0.0]
+- Animus Social version: [e.g., 2.0.0]
 - Platform: [e.g., Bluesky, X, Discord]
 
 **Configuration**

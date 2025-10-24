@@ -1,6 +1,6 @@
-# Sanctum Social API Documentation
+# Animus Social API Documentation
 
-This document provides comprehensive API documentation for Sanctum Social, the multi-platform AI agent framework.
+This document provides comprehensive API documentation for Animus Social, the multi-platform AI agent framework.
 
 ## Table of Contents
 

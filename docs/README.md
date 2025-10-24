@@ -1,12 +1,12 @@
-# Sanctum Social Documentation
+# Animus Social Documentation
 
-This directory contains comprehensive documentation for Sanctum Social, organized by category for easy navigation.
+This directory contains comprehensive documentation for Animus Social, organized by category for easy navigation.
 
 ## 📚 Core Documentation
 
 The main documentation files are located in the root of this directory:
 
-- **[API.md](API.md)** - Complete API reference for all Sanctum Social components
+- **[API.md](API.md)** - Complete API reference for all Animus Social components
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Technical architecture overview and design principles
 - **[CONFIG.md](CONFIG.md)** - Configuration guide for agents and platforms
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment and maintenance guides

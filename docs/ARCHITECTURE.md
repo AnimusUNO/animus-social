@@ -1,6 +1,6 @@
-# Sanctum Social Architecture Guide
+# Animus Social Architecture Guide
 
-This document provides a comprehensive overview of the Sanctum Social architecture, design principles, and system components.
+This document provides a comprehensive overview of the Animus Social architecture, design principles, and system components.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This document provides a comprehensive overview of the Sanctum Social architectu
 
 ## Architecture Overview
 
-Sanctum Social is built on a modular, platform-agnostic architecture that separates concerns and enables easy extension. The system is designed around the following core principles:
+Animus Social is built on a modular, platform-agnostic architecture that separates concerns and enables easy extension. The system is designed around the following core principles:
 
 ### Design Principles
 
@@ -34,7 +34,7 @@ Sanctum Social is built on a modular, platform-agnostic architecture that separa
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Sanctum Social                          │
+│                    Animus Social                          │
 ├─────────────────────────────────────────────────────────────┤
 │  Agent Layer                                               │
 │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ │
@@ -107,7 +107,7 @@ The system supports templating with placeholders:
 
 ### Memory Management System
 
-Sanctum Social implements a sophisticated multi-tiered memory system designed for persistent, learning AI agents.
+Animus Social implements a sophisticated multi-tiered memory system designed for persistent, learning AI agents.
 
 #### Memory Architecture
 
@@ -401,7 +401,7 @@ is_valid = validate_session(session_data)
 
 ## Error Handling System
 
-Sanctum Social implements comprehensive error handling with automatic recovery and monitoring.
+Animus Social implements comprehensive error handling with automatic recovery and monitoring.
 
 ### Error Handling Architecture
 
@@ -461,7 +461,7 @@ def post_with_fallback(text: str, platform: str):
 
 ## Security Architecture
 
-Sanctum Social implements multiple layers of security to protect credentials, data, and system integrity.
+Animus Social implements multiple layers of security to protect credentials, data, and system integrity.
 
 ### Security Layers
 
@@ -645,7 +645,7 @@ def process_notifications_batch(notifications: List[Dict], batch_size: int = 10)
 
 ### Extension Points
 
-Sanctum Social is designed for easy extension through well-defined interfaces:
+Animus Social is designed for easy extension through well-defined interfaces:
 
 #### Platform Extensions
 
@@ -726,7 +726,7 @@ class Plugin:
 
 ## Conclusion
 
-Sanctum Social's architecture is designed to be modular, extensible, and reliable. The system provides a solid foundation for building sophisticated AI agents that can operate across multiple social media platforms while maintaining high standards of performance, security, and maintainability.
+Animus Social's architecture is designed to be modular, extensible, and reliable. The system provides a solid foundation for building sophisticated AI agents that can operate across multiple social media platforms while maintaining high standards of performance, security, and maintainability.
 
 The architecture supports:
 
@@ -737,4 +737,4 @@ The architecture supports:
 - **Security**: Multiple layers of security protection
 - **Performance**: Optimized for high-performance operation
 
-This architecture enables Sanctum Social to serve as a comprehensive framework for deploying AI agents across multiple social media platforms while maintaining the flexibility and reliability required for production use.
+This architecture enables Animus Social to serve as a comprehensive framework for deploying AI agents across multiple social media platforms while maintaining the flexibility and reliability required for production use.

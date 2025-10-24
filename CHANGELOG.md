@@ -1,15 +1,15 @@
 # Changelog
 
-All notable changes to Sanctum Social are documented in this file.
+All notable changes to Animus Social are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.0.0] - 2024-12-19
 
-### 🎉 Major Release: Sanctum Social Rebrand
+### 🎉 Major Release: Animus Social Rebrand
 
-This release represents a complete evolution from the original "void" project to Sanctum Social, a comprehensive multi-platform AI agent framework that operates as part of the broader [SanctumOS](https://sanctumos.org) ecosystem.
+This release represents a complete evolution from the original "void" project to Animus Social, a comprehensive multi-platform AI agent framework that operates as part of the broader [Animus](https://animus.uno) ecosystem.
 
 ### Added
 

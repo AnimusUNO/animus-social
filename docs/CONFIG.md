@@ -1,6 +1,6 @@
-# Sanctum Social Configuration Guide
+# Animus Social Configuration Guide
 
-This guide provides comprehensive information about configuring Sanctum Social agents, platforms, and system settings.
+This guide provides comprehensive information about configuring Animus Social agents, platforms, and system settings.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This guide provides comprehensive information about configuring Sanctum Social a
 
 ## Configuration Overview
 
-Sanctum Social uses a flexible, templated configuration system that allows for complete customization of agent behavior, platform settings, and system parameters.
+Animus Social uses a flexible, templated configuration system that allows for complete customization of agent behavior, platform settings, and system parameters.
 
 ### Configuration File Structure
 
@@ -56,7 +56,7 @@ logging: { ... }
 
 ### Configuration Templating
 
-Sanctum Social supports templating with placeholders that are dynamically replaced:
+Animus Social supports templating with placeholders that are dynamically replaced:
 
 - `{agent_name}`: Agent name
 - `{personality.core_identity}`: Core identity from personality
@@ -77,7 +77,7 @@ agent:
   display_name: "My Social Agent"
   
   # Agent description
-  description: "A social media agent built with Sanctum Social"
+  description: "A social media agent built with Animus Social"
 ```
 
 ### Agent Personality
@@ -86,7 +86,7 @@ agent:
 agent:
   personality:
     # Core identity statement
-    core_identity: "I am a social media AI agent built with Sanctum Social. I interact across multiple platforms and learn from my experiences."
+    core_identity: "I am a social media AI agent built with Animus Social. I interact across multiple platforms and learn from my experiences."
     
     # Development directive
     development_directive: "I must develop my personality and understanding of social dynamics."
@@ -752,4 +752,4 @@ logging:
 - Test configuration changes in development
 - Keep configuration files organized and commented
 
-This configuration guide provides comprehensive information for setting up and customizing Sanctum Social agents. For additional help, see the troubleshooting guide or contact support.
+This configuration guide provides comprehensive information for setting up and customizing Animus Social agents. For additional help, see the troubleshooting guide or contact support.

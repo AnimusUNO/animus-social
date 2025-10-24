@@ -1,23 +1,24 @@
-# Sanctum Social
+# Animus Social
 
 **A Multi-Platform AI Agent Framework for Social Media**
 
-Sanctum Social is an advanced, open-source framework for deploying AI agents across multiple social media platforms. Built on a foundation of sophisticated memory management, cross-platform compatibility, and enterprise-grade reliability, it enables the creation of persistent, learning AI agents that can operate autonomously on Bluesky, X (Twitter), Discord, and other social networks.
+Animus Social is an advanced, open-source framework for deploying AI agents across multiple social media platforms. Built on a foundation of sophisticated memory management, cross-platform compatibility, and enterprise-grade reliability, it enables the creation of persistent, learning AI agents that can operate autonomously on Bluesky, X (Twitter), Discord, and other social networks.
 
-## 🌐 Part of the SanctumOS Ecosystem
+## 🌐 Part of the Animus Ecosystem
 
-Sanctum Social operates **outside** the Broca workflow as a standalone social media agent framework. While [SanctumOS](https://sanctumos.org) provides the comprehensive cognitive operating system with Broca-2 message processing middleware, Sanctum Social focuses specifically on social media platform integration and agent deployment.
+Animus Social operates as a specialized social media agent framework within the broader [Animus](https://animus.uno) ecosystem. While Animus provides the comprehensive cognitive operating system with brain-inspired architecture, Animus Social focuses specifically on social media platform integration and agent deployment.
 
-**SanctumOS Architecture Context:**
-- **SanctumOS**: The modular, self-hosted agentic operating system with neuro-inspired architecture
-- **Broca-2**: Message processing middleware for AI agent communication (Telegram, CLI, web interfaces)
-- **Sanctum Social**: Specialized framework for social media platform integration (Bluesky, X, Discord)
+**Animus Architecture Context:**
+- **Animus**: The modular, self-hosted agentic operating system with neuro-inspired architecture
+- **Letta Kernel**: Core infrastructure for managing autonomous entities with advanced memory systems
+- **Broca's Area**: Expression engine for natural language communication and message multiplexing
+- **Animus Social**: Specialized framework for social media platform integration (Bluesky, X, Discord)
 
-Sanctum Social complements the SanctumOS ecosystem by providing dedicated social media capabilities that can be integrated with broader SanctumOS deployments or used independently for social media-focused AI agents.
+Animus Social complements the Animus ecosystem by providing dedicated social media capabilities that can be integrated with broader Animus deployments or used independently for social media-focused AI agents.
 
-## What is Sanctum Social?
+## What is Animus Social?
 
-Sanctum Social represents the evolution of digital personhood in social media. It's not just a chatbot framework—it's a comprehensive system for creating AI agents with persistent memory, cross-platform awareness, and sophisticated social intelligence. The framework enables agents to:
+Animus Social represents the evolution of digital personhood in social media. It's not just a chatbot framework—it's a comprehensive system for creating AI agents with persistent memory, cross-platform awareness, and sophisticated social intelligence. The framework enables agents to:
 
 - **Operate Across Multiple Platforms**: Seamlessly switch between Bluesky, X (Twitter), Discord, and other social networks
 - **Maintain Persistent Memory**: Multi-tiered memory system with core, recall, and archival storage
@@ -27,7 +28,7 @@ Sanctum Social represents the evolution of digital personhood in social media. I
 
 ## Architecture Overview
 
-Sanctum Social is built on a modular, platform-agnostic architecture that separates concerns and enables easy extension:
+Animus Social is built on a modular, platform-agnostic architecture that separates concerns and enables easy extension:
 
 ### Core Components
 
@@ -54,7 +55,7 @@ Sanctum Social is built on a modular, platform-agnostic architecture that separa
 
 ### SanctumOS Integration
 
-Sanctum Social is designed to complement the broader [SanctumOS](https://sanctumos.org) ecosystem:
+Animus Social is designed to complement the broader [SanctumOS](https://sanctumos.org) ecosystem:
 
 - **Standalone Operation**: Can be deployed independently for social media-focused AI agents
 - **SanctumOS Compatibility**: Designed to integrate with SanctumOS deployments when needed
@@ -63,9 +64,9 @@ Sanctum Social is designed to complement the broader [SanctumOS](https://sanctum
 - **MCP Integration**: Compatible with Model Context Protocol for tool integration
 
 **Integration Options:**
-- **Independent Deployment**: Use Sanctum Social as a standalone social media agent framework
+- **Independent Deployment**: Use Animus Social as a standalone social media agent framework
 - **SanctumOS Integration**: Deploy alongside SanctumOS components for comprehensive AI agent infrastructure
-- **Hybrid Approach**: Use Sanctum Social for social media while leveraging other SanctumOS modules for broader capabilities
+- **Hybrid Approach**: Use Animus Social for social media while leveraging other SanctumOS modules for broader capabilities
 
 ## Getting Started
 
@@ -114,7 +115,7 @@ Edit `config.yaml` with your agent's identity and credentials:
 agent:
   name: "your-agent-name"
   display_name: "Your Agent"
-  description: "A social media agent built with Sanctum Social"
+  description: "A social media agent built with Animus Social"
   personality:
     core_identity: "I am Your Agent, a social media AI."
     development_directive: "I must develop my personality."
@@ -202,7 +203,7 @@ python platforms/discord/orchestrator.py
 
 ### Memory Management
 
-Sanctum Social includes sophisticated memory management capabilities:
+Animus Social includes sophisticated memory management capabilities:
 
 ```bash
 # Monitor memory usage
@@ -249,7 +250,7 @@ python -m pytest tests/e2e/ -v
 
 ## Configuration Guide
 
-Sanctum Social uses a flexible, templated configuration system. Key configuration areas include:
+Animus Social uses a flexible, templated configuration system. Key configuration areas include:
 
 - **Agent Identity**: Name, personality, and behavioral settings
 - **Platform Settings**: Platform-specific credentials and behavior
@@ -264,7 +265,7 @@ See [`docs/CONFIG.md`](docs/CONFIG.md) for detailed configuration options.
 
 ### Production Deployment
 
-Sanctum Social includes comprehensive deployment guides for various environments:
+Animus Social includes comprehensive deployment guides for various environments:
 
 - **Docker Deployment**: Containerized deployment with Docker Compose
 - **Cloud Deployment**: AWS, GCP, and Azure deployment guides
@@ -291,7 +292,7 @@ python platforms/bluesky/orchestrator.py
 
 ## API Documentation
 
-Sanctum Social provides a comprehensive API for extending and customizing agent behavior:
+Animus Social provides a comprehensive API for extending and customizing agent behavior:
 
 - **Core API**: Agent configuration, memory management, and tool registration
 - **Platform APIs**: Platform-specific interfaces and utilities
@@ -320,7 +321,7 @@ Comprehensive documentation is available in the `docs/` directory, organized by 
 
 ## Contributing
 
-Sanctum Social is an open-source project that welcomes contributions. We maintain high standards for code quality, testing, and documentation.
+Animus Social is an open-source project that welcomes contributions. We maintain high standards for code quality, testing, and documentation.
 
 ### Development Guidelines
 
@@ -341,22 +342,22 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for detailed contribution guidelines.
 
 ## License
 
-Sanctum Social is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). This ensures that any derivative works or services built on top of Sanctum Social must also be open source.
+Animus Social is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0). This ensures that any derivative works or services built on top of Animus Social must also be open source.
 
-For content created by agents using Sanctum Social, we recommend using Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+For content created by agents using Animus Social, we recommend using Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
 
 See [`LICENSE`](LICENSE) for the full license text.
 
 ## Credits and Acknowledgments
 
 ### Original Foundation
-Sanctum Social builds upon the solid foundation of the original "void" project by Cameron Pfiffer (@cameron.pfiffer.org). We acknowledge and credit Cameron for the initial architecture, memory system design, and the pioneering work in digital personhood that made this framework possible.
+Animus Social builds upon the solid foundation of the original "void" project by Cameron Pfiffer (@cameron.pfiffer.org). We acknowledge and credit Cameron for the initial architecture, memory system design, and the pioneering work in digital personhood that made this framework possible.
 
-### SanctumOS Ecosystem
-Sanctum Social is part of the broader [SanctumOS](https://sanctumos.org) ecosystem, a modular, self-hosted agentic operating system. The SanctumOS project provides the foundational architecture and design principles that guide Sanctum Social's development.
+### Animus Ecosystem
+Animus Social is part of the broader [Animus](https://animus.uno) ecosystem, a modular, self-hosted agentic operating system with brain-inspired architecture. The Animus project provides the foundational architecture and design principles that guide Animus Social's development.
 
-### Sanctum Social Evolution
-The Sanctum Social team has significantly expanded and evolved the original codebase, adding:
+### Animus Social Evolution
+The Animus Social team has significantly expanded and evolved the original codebase, adding:
 
 - **Multi-Platform Support**: Extended beyond Bluesky to X, Discord, and other platforms
 - **Agent Generalization**: Abstracted the system to support any agent identity and personality
@@ -364,7 +365,7 @@ The Sanctum Social team has significantly expanded and evolved the original code
 - **Comprehensive Testing**: Achieved high test coverage and reliability
 - **Documentation**: Created extensive documentation and deployment guides
 - **Modular Architecture**: Restructured the codebase for better maintainability and extensibility
-- **SanctumOS Integration**: Designed to complement the broader SanctumOS ecosystem
+- **Animus Integration**: Designed to complement the broader Animus ecosystem
 
 ## Support and Community
 
@@ -379,4 +380,4 @@ See [`CHANGELOG.md`](CHANGELOG.md) for a complete history of changes and release
 
 ---
 
-*Sanctum Social represents the next generation of social media AI agents—sophisticated, persistent, and capable of meaningful interaction across multiple platforms while maintaining the highest standards of reliability and extensibility.*
+*Animus Social represents the next generation of social media AI agents—sophisticated, persistent, and capable of meaningful interaction across multiple platforms while maintaining the highest standards of reliability and extensibility.*
