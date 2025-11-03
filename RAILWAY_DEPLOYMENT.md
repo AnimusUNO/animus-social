@@ -1,0 +1,209 @@
+# Railway Deployment Guide for Animus Social
+
+This guide explains how to deploy Animus Social on Railway using environment variables instead of committing `config.yaml` to git.
+
+## Overview
+
+Since `config.yaml` contains sensitive credentials and is gitignored, we use a **startup script** (`scripts/generate_config.py`) that generates `config.yaml` from Railway environment variables when the application starts.
+
+## Deployment Steps
+
+### 1. Connect Your Repository to Railway
+
+1. Go to [Railway](https://railway.app)
+2. Create a new project
+3. Connect your GitHub repository
+4. Railway will automatically detect it's a Python project
+
+### 2. Configure Environment Variables
+
+In Railway dashboard, go to your project → **Variables** tab and add all required environment variables:
+
+#### Required Variables (Minimum)
+
+```bash
+# Letta Configuration
+LETTA_API_KEY=sk-let-...
+LETTA_AGENT_ID=agent-...
+LETTA_BASE_URL=https://your-letta-server.up.railway.app  # Optional, for self-hosted
+
+# X (Twitter) Configuration
+X_ENABLED=true
+X_API_KEY=your_x_api_key
+X_USER_ID=your_user_id
+X_CONSUMER_KEY=your_consumer_key
+X_CONSUMER_SECRET=your_consumer_secret
+X_ACCESS_TOKEN=your_access_token
+X_ACCESS_TOKEN_SECRET=your_access_token_secret
+
+# Agent Configuration
+AGENT_NAME=bianca
+AGENT_DISPLAY_NAME=Bianca
+AGENT_MODEL=openai/gpt-4o-mini
+AGENT_EMBEDDING=openai/text-embedding-3-small
+```
+
+#### Optional Variables
+
+```bash
+# Agent Personality (can be long strings)
+AGENT_CORE_IDENTITY=I am Bianca, an expert on everything Animus...
+AGENT_DEVELOPMENT_DIRECTIVE=I must develop my understanding...
+AGENT_COMMUNICATION_STYLE=witty, engaging, informative, conversational
+AGENT_TONE=friendly, knowledgeable, curious
+AGENT_STOP_COMMAND=#biancastop
+
+# Memory Blocks (can be long strings)
+MEMORY_ZEITGEIST=I'm learning about the current state of Twitter...
+MEMORY_PERSONA=I am Bianca, an expert on everything Animus...
+MEMORY_HUMANS=I'm starting to build relationships with Twitter users...
+MEMORY_ANIMUS_KNOWLEDGE=I am deeply knowledgeable about Animus...
+
+# Logging
+LOG_LEVEL=INFO
+```
+
+### 3. Configure Start Command
+
+Railway will automatically use the `Procfile` or `railway.json`. The start command is:
+
+```bash
+python scripts/generate_config.py && python platforms/x/orchestrator.py bot
+```
+
+This will:
+1. Generate `config.yaml` from environment variables
+2. Start the X orchestrator bot
+
+### 4. Set Python Version (Optional)
+
+In Railway, you can set the Python version in the **Variables** tab:
+
+```bash
+PYTHON_VERSION=3.11
+```
+
+Or add a `runtime.txt` file to your repo:
+
+```
+python-3.11
+```
+
+### 5. Deploy
+
+Railway will automatically:
+1. Install dependencies from `requirements.txt`
+2. Run `scripts/generate_config.py` to create `config.yaml`
+3. Start the bot with `python platforms/x/orchestrator.py bot`
+
+## Environment Variables Reference
+
+### Letta Configuration
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `LETTA_API_KEY` | Yes | Your Letta API key | `sk-let-...` |
+| `LETTA_AGENT_ID` | Yes | Your Letta agent ID | `agent-...` |
+| `LETTA_BASE_URL` | No | Self-hosted Letta server URL | `https://...` |
+| `LETTA_TIMEOUT` | No | API timeout in seconds | `600` |
+
+### X (Twitter) Configuration
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `X_ENABLED` | Yes | Set to `true` to enable X platform |
+| `X_API_KEY` | Yes | X API Bearer Token |
+| `X_USER_ID` | Yes | Your X user ID |
+| `X_CONSUMER_KEY` | Yes | OAuth consumer key |
+| `X_CONSUMER_SECRET` | Yes | OAuth consumer secret |
+| `X_ACCESS_TOKEN` | Yes | OAuth access token |
+| `X_ACCESS_TOKEN_SECRET` | Yes | OAuth access token secret |
+
+### Agent Configuration
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `AGENT_NAME` | No | `bianca` | Agent name (used in memory blocks) |
+| `AGENT_DISPLAY_NAME` | No | `Bianca` | Human-readable name |
+| `AGENT_DESCRIPTION` | No | Default | Agent description |
+| `AGENT_MODEL` | No | `openai/gpt-4o-mini` | LLM model to use |
+| `AGENT_EMBEDDING` | No | `openai/text-embedding-3-small` | Embedding model |
+| `AGENT_MAX_STEPS` | No | `100` | Maximum agent steps |
+| `AGENT_STOP_COMMAND` | No | `#biancastop` | Stop command |
+| `AGENT_CORE_IDENTITY` | No | Empty | Agent's core identity prompt |
+| `AGENT_DEVELOPMENT_DIRECTIVE` | No | Empty | Agent's development directive |
+| `AGENT_COMMUNICATION_STYLE` | No | Default | Communication style |
+| `AGENT_TONE` | No | Default | Communication tone |
+
+### Memory Blocks
+
+Memory blocks can be set as environment variables. They support multi-line strings in Railway:
+
+| Variable | Description |
+|----------|-------------|
+| `MEMORY_ZEITGEIST` | Zeitgeist memory block content |
+| `MEMORY_PERSONA` | Persona memory block content |
+| `MEMORY_HUMANS` | Humans memory block content |
+| `MEMORY_ANIMUS_KNOWLEDGE` | Animus knowledge memory block content |
+
+## Using Railway Secrets
+
+For long values (like system prompts or memory blocks), Railway supports **secrets** which are better for multi-line content:
+
+1. Go to **Variables** → **Raw Editor**
+2. Paste your multi-line content
+3. Railway will automatically handle it
+
+Or use Railway's **Secrets** feature for sensitive values.
+
+## Testing Locally
+
+You can test the config generation locally:
+
+```bash
+# Set environment variables
+export LETTA_API_KEY="sk-let-..."
+export LETTA_AGENT_ID="agent-..."
+export X_ENABLED="true"
+export X_API_KEY="..."
+# ... etc
+
+# Generate config
+python scripts/generate_config.py
+
+# Run the bot
+python platforms/x/orchestrator.py bot
+```
+
+## Troubleshooting
+
+### Config file not found
+- Make sure `scripts/generate_config.py` runs before the bot starts
+- Check Railway logs to see if config generation succeeded
+
+### Missing environment variables
+- Check Railway logs for warnings about missing variables
+- Ensure all required variables are set in Railway dashboard
+
+### Bot not starting
+- Check Railway logs for errors
+- Verify `PYTHONPATH` is set if needed: `PYTHONPATH=.`
+- Ensure all dependencies are in `requirements.txt`
+
+## Production Tips
+
+1. **Use Railway Secrets**: For sensitive values, use Railway's secrets feature
+2. **Monitor Logs**: Keep an eye on Railway logs for any issues
+3. **Set Up Alerts**: Configure Railway alerts for deployment failures
+4. **Backup Config**: Keep a backup of your environment variables somewhere safe
+5. **Health Checks**: Consider adding a health check endpoint if needed
+
+## Alternative: Use config.yaml Template
+
+If you prefer to commit a template and fill it in Railway:
+
+1. Create `config.yaml.template` (commit this)
+2. In Railway, use a startup script to copy and fill it
+3. Or use Railway's **File System** to upload `config.yaml` directly
+
+However, using environment variables is more secure and follows Railway best practices.
