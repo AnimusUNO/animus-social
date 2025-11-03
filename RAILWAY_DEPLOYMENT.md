@@ -35,6 +35,7 @@ X_CONSUMER_KEY=your_consumer_key
 X_CONSUMER_SECRET=your_consumer_secret
 X_ACCESS_TOKEN=your_access_token
 X_ACCESS_TOKEN_SECRET=your_access_token_secret
+X_POLLING_INTERVAL_SEC=60  # Optional: Polling interval in seconds (default: 60)
 
 # Agent Configuration
 AGENT_NAME=bianca
@@ -118,6 +119,7 @@ Railway will automatically:
 | `X_CONSUMER_SECRET` | Yes | OAuth consumer secret |
 | `X_ACCESS_TOKEN` | Yes | OAuth access token |
 | `X_ACCESS_TOKEN_SECRET` | Yes | OAuth access token secret |
+| `X_POLLING_INTERVAL_SEC` | No | Polling interval in seconds (default: 60) |
 
 ### Agent Configuration
 

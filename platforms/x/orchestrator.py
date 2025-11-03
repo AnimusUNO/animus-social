@@ -2324,8 +2324,21 @@ def x_main_loop(testing_mode=False, cleanup_interval=10):
         client_params['base_url'] = config['base_url']
     letta_client = Letta(**client_params)
     
-    # Main loop
-    FETCH_DELAY_SEC = 15  # Check every 15 seconds for X mentions
+    # Main loop - Get polling interval from environment variable, config, or default to 60s
+    import os
+    from core.config import get_x_config
+    
+    # Try environment variable first, then config.yaml, then default
+    env_polling = os.getenv('X_POLLING_INTERVAL_SEC')
+    if env_polling:
+        FETCH_DELAY_SEC = int(env_polling)
+    else:
+        try:
+            x_config = get_x_config()
+            FETCH_DELAY_SEC = int(x_config.get('polling_interval_sec', 60))
+        except Exception:
+            FETCH_DELAY_SEC = 60  # Default fallback
+    
     logger.info(f"Starting X mention monitoring, checking every {FETCH_DELAY_SEC} seconds")
     
     if testing_mode:
