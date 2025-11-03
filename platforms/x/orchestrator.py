@@ -28,10 +28,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("x_client")
 
-def setup_logging_from_config(config_path: str = "config/platforms.yaml"):
-    """Configure logging based on config/platforms.yaml settings."""
+def setup_logging_from_config(config_path: str = "config.yaml"):
+    """Configure logging based on config.yaml settings."""
     try:
-        config = load_x_config(config_path)
+        from core.config import get_config
+        config_obj = get_config(config_path)
+        config = {
+            'x': {},
+            'letta': {},
+            'logging': config_obj.get('logging', {})
+        }
         logging_config = config.get('logging', {})
         log_level = logging_config.get('level', 'INFO').upper()
 
@@ -214,8 +220,8 @@ class XClient:
                 logger.warning("Request failed - no response received")
             return []
     
-    def get_user_info(self, user_id: str) -> Optional[Dict]:
-        """Get information about a specific user."""
+    def get_user_info_by_id(self, user_id: str) -> Optional[Dict]:
+        """Get information about a specific user by their user ID."""
         endpoint = f"/users/{user_id}"
         params = {
             "user.fields": "id,name,username,description,public_metrics"
@@ -288,6 +294,7 @@ class XClient:
         # First, get the original tweet directly since it might not appear in conversation search
         logger.debug(f"Getting thread context for conversation {conversation_id}")
         original_tweet = None
+        original_users_data = {}
         try:
             endpoint = f"/tweets/{conversation_id}"
             params = {
@@ -300,6 +307,11 @@ class XClient:
             if response and "data" in response:
                 original_tweet = response["data"]
                 logger.info(f"Retrieved original tweet: {original_tweet.get('id')}")
+                # Extract user data from the original tweet response
+                if "includes" in response and "users" in response["includes"]:
+                    for user in response["includes"]["users"]:
+                        original_users_data[user["id"]] = user
+                        logger.debug(f"Found user data for {user['id']}: @{user.get('username')}")
         except Exception as e:
             logger.warning(f"Could not fetch original tweet {conversation_id}: {e}")
         
@@ -325,6 +337,9 @@ class XClient:
         
         tweets = []
         users_data = {}
+        
+        # Start with user data from original tweet fetch
+        users_data.update(original_users_data)
         
         # Collect tweets from search
         if response and "data" in response:
@@ -578,39 +593,28 @@ class XClient:
         user_info = self.get_user_info("id,username,name")
         return user_info.get("username") if user_info else None
 
-def load_x_config(config_path: str = "config/platforms.yaml") -> Dict[str, Any]:
-    """Load complete X configuration from config/platforms.yaml."""
-    try:
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
+def load_x_config(config_path: str = "config.yaml") -> Dict[str, Any]:
+    """
+    Load complete X configuration from config.yaml.
+    
+    DEPRECATED: Use core.config.get_x_config() and core.config.get_letta_config() instead.
+    Kept for backward compatibility.
+    """
+    from core.config import get_x_config, get_letta_config
+    return {
+        'x': get_x_config(),
+        'letta': get_letta_config()
+    }
 
-        if not config:
-            raise ValueError(f"Empty or invalid configuration file: {config_path}")
+def get_x_letta_config(config_path: str = "config.yaml") -> Dict[str, Any]:
+    """Get Letta configuration from config.yaml."""
+    from core.config import get_letta_config
+    return get_letta_config()
 
-        # Validate required sections
-        x_config = config.get('x', {})
-        letta_config = config.get('letta', {})
-
-        if not x_config.get('api_key') or not x_config.get('user_id'):
-            raise ValueError("X API key and user_id must be configured in config/platforms.yaml")
-
-        if not letta_config.get('api_key') or not letta_config.get('agent_id'):
-            raise ValueError("Letta API key and agent_id must be configured in config/platforms.yaml")
-
-        return config
-    except Exception as e:
-        logger.error(f"Failed to load X configuration: {e}")
-        raise
-
-def get_x_letta_config(config_path: str = "config/platforms.yaml") -> Dict[str, Any]:
-    """Get Letta configuration from X config file."""
-    config = load_x_config(config_path)
-    return config['letta']
-
-def create_x_client(config_path: str = "config/platforms.yaml") -> XClient:
-    """Create and return an X client with configuration loaded from file."""
-    config = load_x_config(config_path)
-    x_config = config['x']
+def create_x_client(config_path: str = "config.yaml") -> XClient:
+    """Create and return an X client with configuration loaded from config.yaml."""
+    from core.config import get_x_config
+    x_config = get_x_config()
     return XClient(
         api_key=x_config['api_key'],
         user_id=x_config['user_id'],
@@ -707,7 +711,13 @@ def ensure_x_user_blocks_attached(thread_data: Dict, agent_id: Optional[str] = N
 
         # Get Letta client and agent_id from X config
         config = get_x_letta_config()
-        client = Letta(token=config['api_key'], timeout=config['timeout'])
+        client_params = {
+            'token': config['api_key'],
+            'timeout': config['timeout']
+        }
+        if config.get('base_url'):
+            client_params['base_url'] = config['base_url']
+        client = Letta(**client_params)
         
         # Use provided agent_id or get from config
         if agent_id is None:
@@ -1142,8 +1152,10 @@ def get_my_user_info():
             print(f"   Username: @{user_data.get('username')}")
             print(f"   Name: {user_data.get('name')}")
             print(f"   Description: {user_data.get('description', 'N/A')[:100]}...")
-            print(f"\n🔧 Update your config/platforms.yaml with:")
-            print(f"   user_id: \"{user_data.get('id')}\"")
+            print(f"\n🔧 Update your config.yaml with:")
+            print(f"   platforms:")
+            print(f"     x:")
+            print(f"       user_id: \"{user_data.get('id')}\"")
             return user_data
         else:
             print("❌ Failed to get user information")
@@ -1283,7 +1295,7 @@ def test_letta_integration(agent_id: str = None):
                     agent_id = config_agent_id
                     print(f"ℹ️ Using agent_id from config: {agent_id}")
                 else:
-                    print("❌ No agent_id found in config/platforms.yaml")
+                    print("❌ No agent_id found in config.yaml")
                     print("Expected config structure:")
                     print("  letta:")
                     print("    agent_id: your-agent-id")
@@ -1296,7 +1308,7 @@ def test_letta_integration(agent_id: str = None):
                 import os
                 api_key = os.getenv('LETTA_API_KEY')
                 if not api_key:
-                    print("❌ LETTA_API_KEY not found in config/platforms.yaml or environment")
+                    print("❌ LETTA_API_KEY not found in config.yaml or environment")
                     print("Expected config structure:")
                     print("  letta:")
                     print("    api_key: your-letta-api-key")
@@ -1304,7 +1316,7 @@ def test_letta_integration(agent_id: str = None):
                 else:
                     print("ℹ️ Using LETTA_API_KEY from environment")
             else:
-                print("ℹ️ Using LETTA_API_KEY from config/platforms.yaml")
+                print("ℹ️ Using LETTA_API_KEY from config.yaml")
                 
         except Exception as e:
             print(f"❌ Error loading config: {e}")
@@ -1647,6 +1659,25 @@ def process_x_mention(agent, x_client, mention_data, queue_filepath=None, testin
         author_username = author_info.get('username', 'unknown')
         author_name = author_info.get('name', author_username)
         
+        # Fallback: If username is still unknown, try fetching user info directly by ID
+        if author_username == 'unknown' and author_id:
+            logger.warning(f"Username not found in thread_data for author_id {author_id}, fetching directly...")
+            try:
+                # Use the XClient method to get user info by ID
+                user_info = x_client.get_user_info_by_id(author_id)
+                if user_info:
+                    author_username = user_info.get('username', 'unknown')
+                    author_name = user_info.get('name', author_username)
+                    logger.info(f"Fetched username for {author_id}: @{author_username}")
+                    # Add to thread_data for future reference
+                    if 'users' not in thread_data:
+                        thread_data['users'] = {}
+                    thread_data['users'][author_id] = user_info
+                else:
+                    logger.warning(f"Failed to fetch user info for {author_id}: user not found")
+            except Exception as e:
+                logger.warning(f"Failed to fetch user info for {author_id}: {e}")
+        
         # Create prompt for Letta agent using configuration
         config = get_config()
         prompt = generate_mention_prompt(
@@ -1669,7 +1700,13 @@ def process_x_mention(agent, x_client, mention_data, queue_filepath=None, testin
         from letta_client import Letta
 
         config = get_x_letta_config()
-        letta_client = Letta(token=config['api_key'], timeout=config['timeout'])
+        client_params = {
+            'token': config['api_key'],
+            'timeout': config['timeout']
+        }
+        if config.get('base_url'):
+            client_params['base_url'] = config['base_url']
+        letta_client = Letta(**client_params)
         
         prompt_char_count = len(prompt)
         logger.debug(f"Sending to LLM: @{author_username} mention | msg: \"{mention_text[:50]}...\" | context: {len(thread_context)} chars | prompt: {prompt_char_count} chars")
@@ -1902,8 +1939,20 @@ def acknowledge_x_post(x_client, post_id, note=None):
         True if successful, False otherwise
     """
     try:
+        # Check if Bluesky is configured before attempting acknowledgment
+        from core.config import get_config
+        config = get_config()
+        
+        if not config.is_platform_enabled('bluesky'):
+            logger.debug("Bluesky not enabled, skipping X post acknowledgment")
+            return True  # Not an error, just skipped
+        
         # Use Bluesky client to upload acks to the agent data repository on atproto
-        bsky_client = bsky_utils.default_login()
+        try:
+            bsky_client = bsky_utils.default_login()
+        except Exception as bsky_error:
+            logger.debug(f"Bluesky client not available (missing config): {bsky_error}. Skipping X post acknowledgment.")
+            return True  # Not an error, just skipped
         
         # Create a synthetic URI and CID for the X post
         # X posts don't have atproto URIs/CIDs, so we create identifiers
@@ -1917,12 +1966,82 @@ def acknowledge_x_post(x_client, post_id, note=None):
             logger.debug(f"Acknowledged X post {post_id} via atproto" + (f" with note: {note[:50]}..." if note else ""))
             return True
         else:
-            logger.error(f"Failed to acknowledge X post {post_id}")
-            return False
+            logger.debug(f"Failed to acknowledge X post {post_id} (non-critical)")
+            return False  # Non-critical failure
             
     except Exception as e:
-        logger.error(f"Error acknowledging X post {post_id}: {e}")
-        return False
+        logger.debug(f"Error acknowledging X post {post_id} (non-critical): {e}")
+        return False  # Don't let acknowledgment failures stop processing
+
+def clean_hashtags(text: str) -> str:
+    """
+    Remove all hashtags from text.
+    Hashtags are not allowed in Bianca's responses.
+    
+    Args:
+        text: Text that may contain hashtags
+        
+    Returns:
+        Text with all hashtags removed
+    """
+    import re
+    # Remove hashtags (word starting with #)
+    cleaned = re.sub(r'#\w+', '', text)
+    # Clean up extra spaces that might be left
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned.strip()
+
+def clean_excessive_emojis(text: str, max_emojis: int = 3) -> str:
+    """
+    Clean excessive emojis from text, keeping only the first max_emojis.
+    This prevents emoji spam in responses.
+    
+    Args:
+        text: Text that may contain emojis
+        max_emojis: Maximum number of emojis to keep (default: 3)
+        
+    Returns:
+        Text with excessive emojis removed
+    """
+    import re
+    # Pattern to match emojis (covers most Unicode emoji ranges)
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map
+        "\U0001F1E0-\U0001F1FF"  # flags
+        "\U00002702-\U000027B0"  # dingbats
+        "\U000024C2-\U0001F251"  # enclosed characters
+        "\U0001F900-\U0001F9FF"  # supplemental symbols
+        "\U00002600-\U000026FF"  # miscellaneous symbols
+        "\U00002700-\U000027BF"  # dingbats
+        "]+", 
+        flags=re.UNICODE
+    )
+    
+    # Find all emoji sequences
+    emojis_found = emoji_pattern.findall(text)
+    
+    if len(emojis_found) <= max_emojis:
+        return text  # No cleaning needed
+    
+    # Remove all emojis first
+    text_no_emojis = emoji_pattern.sub('', text)
+    
+    # Add back only the first max_emojis emojis, preserving spacing
+    emojis_to_keep = emojis_found[:max_emojis]
+    
+    # Try to preserve natural spacing by adding emojis back at the end or where they naturally fit
+    # Simple approach: add them at the end
+    cleaned_text = text_no_emojis.strip()
+    if emojis_to_keep:
+        # Add a space if the text doesn't end with punctuation
+        if cleaned_text and not cleaned_text[-1] in '.,!?;:':
+            cleaned_text += ' '
+        cleaned_text += ' '.join(emojis_to_keep)
+    
+    return cleaned_text.strip()
 
 def post_x_thread_replies(x_client, in_reply_to_tweet_id, reply_messages):
     """
@@ -1940,9 +2059,23 @@ def post_x_thread_replies(x_client, in_reply_to_tweet_id, reply_messages):
         current_reply_id = in_reply_to_tweet_id
         
         for i, reply_text in enumerate(reply_messages):
-            logger.info(f"Posting X reply {i+1}/{len(reply_messages)}: {reply_text[:50]}...")
+            # Clean hashtags first
+            cleaned_reply = clean_hashtags(reply_text)
+            if cleaned_reply != reply_text:
+                logger.warning(f"Removed hashtags from reply {i+1}")
+                logger.debug(f"Original: {reply_text[:100]}...")
+                logger.debug(f"Cleaned: {cleaned_reply[:100]}...")
             
-            result = x_client.post_reply(reply_text, current_reply_id)
+            # Clean excessive emojis before posting
+            cleaned_reply = clean_excessive_emojis(cleaned_reply, max_emojis=3)
+            if cleaned_reply != reply_text:
+                logger.warning(f"Cleaned excessive emojis from reply {i+1}")
+                logger.debug(f"Original: {reply_text[:100]}...")
+                logger.debug(f"Cleaned: {cleaned_reply[:100]}...")
+            
+            logger.info(f"Posting X reply {i+1}/{len(reply_messages)}: {cleaned_reply[:50]}...")
+            
+            result = x_client.post_reply(cleaned_reply, current_reply_id)
             
             if result and 'data' in result:
                 new_tweet_id = result['data']['id']
@@ -2120,7 +2253,13 @@ def initialize_x_agent():
 
     # Get config
     config = get_x_letta_config()
-    client = Letta(token=config['api_key'], timeout=config['timeout'])
+    client_params = {
+        'token': config['api_key'],
+        'timeout': config['timeout']
+    }
+    if config.get('base_url'):
+        client_params['base_url'] = config['base_url']
+    client = Letta(**client_params)
     agent_id = config['agent_id']
     
     try:
@@ -2177,10 +2316,16 @@ def x_main_loop(testing_mode=False, cleanup_interval=10):
     
     # Get Letta client for periodic cleanup
     config = get_x_letta_config()
-    letta_client = Letta(token=config['api_key'], timeout=config['timeout'])
+    client_params = {
+        'token': config['api_key'],
+        'timeout': config['timeout']
+    }
+    if config.get('base_url'):
+        client_params['base_url'] = config['base_url']
+    letta_client = Letta(**client_params)
     
     # Main loop
-    FETCH_DELAY_SEC = 120  # Check every 2 minutes for X mentions (reduced from 60s to conserve API calls)
+    FETCH_DELAY_SEC = 15  # Check every 15 seconds for X mentions
     logger.info(f"Starting X mention monitoring, checking every {FETCH_DELAY_SEC} seconds")
     
     if testing_mode:

@@ -344,6 +344,18 @@ def user_note_append(handle: str, note: str, agent_state: "AgentState") -> str:
                     agent_id=str(agent_state.id),
                     block_id=str(block.id)
                 )
+                
+                # CRITICAL FIX: Synchronize agent_state.memory after successful attachment
+                # This prevents the "Block field does not exist" KeyError when using memory functions
+                try:
+                    # Update agent_state.memory to include the newly attached block
+                    if hasattr(agent_state, 'memory') and hasattr(agent_state.memory, 'blocks'):
+                        # Add the block to the in-memory state
+                        agent_state.memory.blocks.append(block)
+                except Exception as sync_error:
+                    # Log the sync error but don't fail the attachment
+                    print(f"Warning: Could not sync block {block_label} to agent memory: {sync_error}")
+                
                 return f"✓ Created and attached {handle}'s memory block with note"
             else:
                 return f"✓ Created {handle}'s memory block with note"
@@ -464,6 +476,18 @@ def user_note_set(handle: str, content: str, agent_state: "AgentState") -> str:
                     agent_id=str(agent_state.id),
                     block_id=str(block.id)
                 )
+                
+                # CRITICAL FIX: Synchronize agent_state.memory after successful attachment
+                # This prevents the "Block field does not exist" KeyError when using memory functions
+                try:
+                    # Update agent_state.memory to include the newly attached block
+                    if hasattr(agent_state, 'memory') and hasattr(agent_state.memory, 'blocks'):
+                        # Add the block to the in-memory state
+                        agent_state.memory.blocks.append(block)
+                except Exception as sync_error:
+                    # Log the sync error but don't fail the attachment
+                    print(f"Warning: Could not sync block {block_label} to agent memory: {sync_error}")
+                
                 return f"✓ Created and attached {handle}'s memory block"
             else:
                 return f"✓ Created {handle}'s memory block"
@@ -721,6 +745,18 @@ def x_user_note_append(user_id: str, note: str, agent_state: "AgentState") -> st
                     agent_id=str(agent_state.id),
                     block_id=str(block.id)
                 )
+                
+                # CRITICAL FIX: Synchronize agent_state.memory after successful attachment
+                # This prevents the "Block field does not exist" KeyError when using memory functions
+                try:
+                    # Update agent_state.memory to include the newly attached block
+                    if hasattr(agent_state, 'memory') and hasattr(agent_state.memory, 'blocks'):
+                        # Add the block to the in-memory state
+                        agent_state.memory.blocks.append(block)
+                except Exception as sync_error:
+                    # Log the sync error but don't fail the attachment
+                    print(f"Warning: Could not sync X block {block_label} to agent memory: {sync_error}")
+                
                 return f"✓ Created and attached X user {user_id}'s memory block with note"
             else:
                 return f"✓ Created X user {user_id}'s memory block with note"
@@ -835,6 +871,18 @@ def x_user_note_set(user_id: str, content: str, agent_state: "AgentState") -> st
                     agent_id=str(agent_state.id),
                     block_id=str(block.id)
                 )
+                
+                # CRITICAL FIX: Synchronize agent_state.memory after successful attachment
+                # This prevents the "Block field does not exist" KeyError when using memory functions
+                try:
+                    # Update agent_state.memory to include the newly attached block
+                    if hasattr(agent_state, 'memory') and hasattr(agent_state.memory, 'blocks'):
+                        # Add the block to the in-memory state
+                        agent_state.memory.blocks.append(block)
+                except Exception as sync_error:
+                    # Log the sync error but don't fail the attachment
+                    print(f"Warning: Could not sync X block {block_label} to agent memory: {sync_error}")
+                
                 return f"✓ Created and attached X user {user_id}'s memory block"
             else:
                 return f"✓ Created X user {user_id}'s memory block"

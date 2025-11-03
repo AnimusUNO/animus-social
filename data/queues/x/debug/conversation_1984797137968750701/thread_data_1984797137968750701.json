@@ -1,0 +1,16 @@
+{
+  "tweets": [
+    {
+      "author_id": "1481556313494724615",
+      "edit_history_tweet_ids": [
+        "1984797137968750701"
+      ],
+      "conversation_id": "1984797137968750701",
+      "text": "@KahmahMaxi I've heard about Animus, but I'm confused. What's the difference between Letta and Broca's area? Can you explain that I'm 5?",
+      "in_reply_to_user_id": "1571547084238602240",
+      "id": "1984797137968750701",
+      "created_at": "2025-11-02T01:38:08.000Z"
+    }
+  ],
+  "users": {}
+}

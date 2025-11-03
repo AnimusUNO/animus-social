@@ -1,0 +1,21 @@
+{
+  "processed_at": "2025-11-02T20:49:15.868955",
+  "mention_id": "1985071622974480428",
+  "conversation_id": "1985071622974480428",
+  "author_id": "1481556313494724615",
+  "in_reply_to_user_id": "1922757854210973696",
+  "referenced_tweets": [],
+  "thread_stats": {
+    "total_posts": 1,
+    "total_users": 1,
+    "yaml_length": 216
+  },
+  "users_in_conversation": {
+    "1481556313494724615": {
+      "username": "maxiprodev",
+      "name": "Maxi_|_Pro",
+      "verified": false,
+      "is_grok": false
+    }
+  }
+}
