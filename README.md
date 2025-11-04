@@ -192,6 +192,8 @@ python platforms/discord/orchestrator.py
 - **User Memory Management**: Platform-specific user profiling
 - **OAuth1 Authentication**: Secure API access with proper token management
 - **Rate Limiting**: Intelligent rate limit handling and retry logic
+- **Retweet Filtering**: Automatically filters out retweets from mentions
+- **Queue Management**: Tools to clear queued mentions after rate limit issues
 
 ### Discord Integration
 - **Server Management**: Multi-server support with channel-specific behavior

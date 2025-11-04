@@ -2219,6 +2219,26 @@ def process_x_notifications(agent, x_client, testing_mode=False):
     Similar to bsky.py process_notifications but for X.
     """
     try:
+        # Check if we should clear queue on startup (via environment variable)
+        # This is useful when you want to clear old queued mentions after rate limit issues
+        import os
+        clear_queue_flag = os.getenv('CLEAR_X_QUEUE_ON_START', '').lower()
+        if clear_queue_flag == 'true':
+            logger.warning("🧹 CLEAR_X_QUEUE_ON_START is set - clearing queue files...")
+            queue_files = list(X_QUEUE_DIR.glob("x_mention_*.json"))
+            cleared_count = 0
+            for queue_file in queue_files:
+                try:
+                    queue_file.unlink()
+                    cleared_count += 1
+                except Exception as e:
+                    logger.warning(f"Failed to delete {queue_file.name}: {e}")
+            if cleared_count > 0:
+                logger.info(f"✅ Cleared {cleared_count} queue files")
+            else:
+                logger.info("✅ No queue files to clear")
+            logger.info("💡 Remember to set CLEAR_X_QUEUE_ON_START=false after clearing to avoid clearing on every restart")
+        
         # Get username for fetching mentions - uses cached data to avoid rate limits
         username = x_client.get_username()
         if not username:

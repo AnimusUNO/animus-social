@@ -428,6 +428,56 @@ htop
 iotop
 ```
 
+### X Queue Clearing After Rate Limit Issues
+
+**Error**: `X API rate limit exceeded` or `Too many requests` - queue has accumulated many mentions
+
+**Problem**: When the X API hits rate limits (e.g., after retweet spam), the orchestrator queues mentions but can't process them. Even after waiting, restarting attempts to process all queued mentions, hitting rate limits again.
+
+**Solutions**:
+
+#### Option 1: Clear Queue via Environment Variable (Recommended)
+
+Set the `CLEAR_X_QUEUE_ON_START` environment variable in Railway:
+
+1. Go to Railway → Your Service → **Variables** tab
+2. Add new variable:
+   - Name: `CLEAR_X_QUEUE_ON_START`
+   - Value: `true`
+3. Save/Deploy - Railway will redeploy
+4. Check logs - you should see: `✅ Cleared X queue files`
+5. **Important**: After clearing, set it back to `false` or delete the variable (to avoid clearing on every restart)
+
+#### Option 2: Use Clear Queue Script
+
+If you have console/SSH access:
+
+```bash
+# Clear queue files (keeps processed_mentions.json)
+python scripts/clear_x_queue.py
+
+# Or archive instead of delete
+python scripts/clear_x_queue.py --archive
+
+# Clear everything including processed mentions (not recommended)
+python scripts/clear_x_queue.py --clear-processed
+```
+
+#### Option 3: Manual Deletion
+
+If you have file system access:
+
+```bash
+# Delete all queued mentions
+rm -f data/queues/x/x_mention_*.json
+
+# Optional: Clear error/no_reply directories
+rm -rf data/queues/x/errors/*
+rm -rf data/queues/x/no_reply/*
+```
+
+**Note**: The `processed_mentions.json` file is kept by default, so old mentions won't be reprocessed if they're fetched again. This is the recommended behavior.
+
 ## Performance Issues
 
 ### High Memory Usage

@@ -120,6 +120,7 @@ Railway will automatically:
 | `X_ACCESS_TOKEN` | Yes | OAuth access token |
 | `X_ACCESS_TOKEN_SECRET` | Yes | OAuth access token secret |
 | `X_POLLING_INTERVAL_SEC` | No | Polling interval in seconds (default: 60) |
+| `CLEAR_X_QUEUE_ON_START` | No | Set to `true` to clear queued mentions on startup (useful after rate limit issues). **Remember to set back to `false` or delete after use.** |
 
 ### Agent Configuration
 
@@ -191,6 +192,31 @@ python platforms/x/orchestrator.py bot
 - Check Railway logs for errors
 - Verify `PYTHONPATH` is set if needed: `PYTHONPATH=.`
 - Ensure all dependencies are in `requirements.txt`
+
+### X API Rate Limit Issues - Clearing Queue
+
+If you've hit X API rate limits and have many queued mentions:
+
+1. **Set environment variable** (easiest):
+   - Go to **Variables** tab
+   - Add: `CLEAR_X_QUEUE_ON_START` = `true`
+   - Save/Deploy
+   - Check logs to confirm queue cleared
+   - **Set back to `false` or delete** after clearing
+
+2. **Or use Railway CLI** (if installed):
+   ```bash
+   railway shell
+   python scripts/clear_x_queue.py
+   exit
+   ```
+
+3. **Or manually delete** (if you have console access):
+   ```bash
+   rm -f data/queues/x/x_mention_*.json
+   ```
+
+See `docs/TROUBLESHOOTING.md` for more details.
 
 ## Production Tips
 
