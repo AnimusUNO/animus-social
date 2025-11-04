@@ -56,7 +56,8 @@ def generate_config_from_env():
                 "consumer_secret": os.getenv("X_CONSUMER_SECRET", ""),
                 "access_token": os.getenv("X_ACCESS_TOKEN", ""),
                 "access_token_secret": os.getenv("X_ACCESS_TOKEN_SECRET", ""),
-                "polling_interval_sec": int(os.getenv("X_POLLING_INTERVAL_SEC", "60"))
+                "polling_interval_sec": int(os.getenv("X_POLLING_INTERVAL_SEC", "60")),
+                "skip_recent_mentions": int(os.getenv("X_SKIP_RECENT_MENTIONS", "0"))
             },
             "discord": {
                 "enabled": os.getenv("DISCORD_ENABLED", "false").lower() == "true",

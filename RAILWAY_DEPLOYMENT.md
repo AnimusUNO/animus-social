@@ -120,6 +120,7 @@ Railway will automatically:
 | `X_ACCESS_TOKEN` | Yes | OAuth access token |
 | `X_ACCESS_TOKEN_SECRET` | Yes | OAuth access token secret |
 | `X_POLLING_INTERVAL_SEC` | No | Polling interval in seconds (default: 60) |
+| `X_SKIP_RECENT_MENTIONS` | No | Number of most recent mentions to skip (default: 0). Useful after rate limit issues to skip old mentions. **Set back to 0 after use.** |
 | `CLEAR_X_QUEUE_ON_START` | No | Set to `true` to clear queued mentions on startup (useful after rate limit issues). **Remember to set back to `false` or delete after use.** |
 
 ### Agent Configuration
@@ -193,28 +194,30 @@ python platforms/x/orchestrator.py bot
 - Verify `PYTHONPATH` is set if needed: `PYTHONPATH=.`
 - Ensure all dependencies are in `requirements.txt`
 
-### X API Rate Limit Issues - Clearing Queue
+### X API Rate Limit Issues - Skipping Old Mentions
 
-If you've hit X API rate limits and have many queued mentions:
+If you've hit X API rate limits and the orchestrator keeps trying to process old mentions:
 
-1. **Set environment variable** (easiest):
-   - Go to **Variables** tab
-   - Add: `CLEAR_X_QUEUE_ON_START` = `true`
-   - Save/Deploy
-   - Check logs to confirm queue cleared
-   - **Set back to `false` or delete** after clearing
+**The Problem**: After rate limit issues, when the orchestrator restarts, it fetches ALL mentions since the last checkpoint and tries to process them all, hitting rate limits again.
 
-2. **Or use Railway CLI** (if installed):
-   ```bash
-   railway shell
-   python scripts/clear_x_queue.py
-   exit
-   ```
+**Solution: Skip Recent Mentions** (Recommended):
 
-3. **Or manually delete** (if you have console access):
-   ```bash
-   rm -f data/queues/x/x_mention_*.json
-   ```
+1. Go to **Variables** tab
+2. Add: `X_SKIP_RECENT_MENTIONS` = `20` (or however many mentions you want to skip)
+3. Save/Deploy
+4. Check logs - you should see: `⏭️ Skipping X most recent mentions`
+5. **Important**: After the orchestrator runs once, set it back to `0` or delete the variable
+
+This will:
+- Skip the most recent N mentions when fetching
+- Update `last_seen_id` to include skipped mentions (so they won't be fetched again)
+- Only process new mentions going forward
+
+**Alternative: Clear Queue** (if you also have queued files):
+
+1. Set: `CLEAR_X_QUEUE_ON_START` = `true`
+2. Save/Deploy
+3. Set back to `false` after clearing
 
 See `docs/TROUBLESHOOTING.md` for more details.
 

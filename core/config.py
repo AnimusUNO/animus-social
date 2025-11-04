@@ -626,6 +626,7 @@ def get_x_config() -> Dict[str, Any]:
         'access_token': config.get('platforms.x.access_token'),
         'access_token_secret': config.get('platforms.x.access_token_secret'),
         'polling_interval_sec': config.get('platforms.x.polling_interval_sec', 60),
+        'skip_recent_mentions': config.get('platforms.x.skip_recent_mentions', 0),
     }
 
 def get_bot_config() -> Dict[str, Any]:

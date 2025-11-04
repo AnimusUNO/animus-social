@@ -1096,6 +1096,9 @@ def fetch_and_queue_mentions(username: str) -> int:
     """
     Single-pass function to fetch new mentions and queue them.
     Returns number of new mentions found.
+    
+    Supports skipping recent mentions via X_SKIP_RECENT_MENTIONS environment variable.
+    This is useful when you want to skip old mentions after rate limit issues.
     """
     try:
         client = create_x_client()
@@ -1107,15 +1110,27 @@ def fetch_and_queue_mentions(username: str) -> int:
 
         # Search for mentions - this calls GET /2/tweets/search/recent
         logger.debug(f"Calling search_mentions API for @{username}")
-        mentions = client.search_mentions(
+        all_mentions = client.search_mentions(
             username=username,
             since_id=last_seen_id,
             max_results=100  # Get as many as possible
         )
         
-        if not mentions:
+        if not all_mentions:
             logger.info("No new mentions found")
             return 0
+        
+        # Check if we should skip recent mentions (via environment variable)
+        # This is useful when you want to skip old mentions after rate limit issues
+        import os
+        skip_recent = int(os.getenv('X_SKIP_RECENT_MENTIONS', '0'))
+        mentions = all_mentions
+        
+        if skip_recent > 0 and len(mentions) > skip_recent:
+            logger.info(f"⏭️  Skipping {skip_recent} most recent mentions (X_SKIP_RECENT_MENTIONS={skip_recent})")
+            # Skip the most recent N mentions (they're already sorted newest first)
+            mentions = mentions[skip_recent:]
+            logger.info(f"   Processing {len(mentions)} remaining mentions (skipped {skip_recent})")
         
         # Process mentions (newest first, so reverse to process oldest first)
         mentions.reverse()
@@ -1142,10 +1157,16 @@ def fetch_and_queue_mentions(username: str) -> int:
             save_mention_to_queue(mention)
             new_count += 1
         
-        # Update last seen ID to the most recent mention
-        if mentions:
-            most_recent_id = mentions[-1]['id']  # Last after reverse = most recent
+        # Update last seen ID to the most recent mention (including skipped ones)
+        # This ensures we don't fetch the skipped mentions again on next run
+        if all_mentions:
+            # Most recent is the first one (newest first from API)
+            most_recent_id = all_mentions[0]['id']
             save_last_seen_id(most_recent_id)
+            if skip_recent > 0:
+                logger.info(f"✅ Updated last_seen_id to {most_recent_id} (skipped {skip_recent} mentions, won't fetch again)")
+            else:
+                logger.debug(f"Updated last_seen_id to {most_recent_id}")
         
         logger.info(f"Queued {new_count} new X mentions")
         return new_count

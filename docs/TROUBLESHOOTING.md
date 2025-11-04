@@ -430,13 +430,39 @@ iotop
 
 ### X Queue Clearing After Rate Limit Issues
 
-**Error**: `X API rate limit exceeded` or `Too many requests` - queue has accumulated many mentions
+**Error**: `X API rate limit exceeded` or `Too many requests` - orchestrator keeps trying to process old mentions
 
-**Problem**: When the X API hits rate limits (e.g., after retweet spam), the orchestrator queues mentions but can't process them. Even after waiting, restarting attempts to process all queued mentions, hitting rate limits again.
+**Problem**: When the X API hits rate limits (e.g., after retweet spam), the orchestrator may have missed many mentions. When it restarts, it fetches ALL mentions since the last checkpoint and tries to process them all, hitting rate limits again. This creates a cycle where it can't recover.
 
 **Solutions**:
 
-#### Option 1: Clear Queue via Environment Variable (Recommended)
+#### Option 1: Skip Recent Mentions (Recommended - Prevents the Cycle)
+
+This is the best solution because it prevents fetching old mentions in the first place:
+
+1. Go to Railway → Your Service → **Variables** tab
+2. Add new variable:
+   - Name: `X_SKIP_RECENT_MENTIONS`
+   - Value: `20` (or however many mentions you want to skip)
+3. Save/Deploy - Railway will redeploy
+4. Check logs - you should see: `⏭️ Skipping 20 most recent mentions`
+5. **Important**: After the orchestrator runs once and processes new mentions, set it back to `0` or delete the variable
+
+**How it works**:
+- When fetching mentions, skips the most recent N mentions
+- Updates `last_seen_id` to include skipped mentions (so they won't be fetched again)
+- Only processes new mentions going forward
+- Breaks the cycle of trying to process old mentions
+
+**Example**: If you have 20 old mentions you want to skip:
+```bash
+X_SKIP_RECENT_MENTIONS=20
+```
+After one polling cycle, the orchestrator will have moved past those 20 mentions and will only process new ones. Then set it back to `0`.
+
+#### Option 3: Clear Queue via Environment Variable
+
+If you also have queued files that need clearing:
 
 Set the `CLEAR_X_QUEUE_ON_START` environment variable in Railway:
 
@@ -448,7 +474,7 @@ Set the `CLEAR_X_QUEUE_ON_START` environment variable in Railway:
 4. Check logs - you should see: `✅ Cleared X queue files`
 5. **Important**: After clearing, set it back to `false` or delete the variable (to avoid clearing on every restart)
 
-#### Option 2: Use Clear Queue Script
+#### Option 4: Use Clear Queue Script
 
 If you have console/SSH access:
 
@@ -463,7 +489,7 @@ python scripts/clear_x_queue.py --archive
 python scripts/clear_x_queue.py --clear-processed
 ```
 
-#### Option 3: Manual Deletion
+#### Option 5: Manual Deletion
 
 If you have file system access:
 
