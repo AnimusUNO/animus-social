@@ -245,8 +245,9 @@ class XClient:
         """
         endpoint = "/tweets/search/recent"
         
-        # Search for mentions of the username
-        query = f"@{username}"
+        # Search for mentions of the username, excluding retweets
+        # -is:retweet excludes retweets from results
+        query = f"@{username} -is:retweet"
         
         params = {
             "query": query,
@@ -1121,6 +1122,23 @@ def fetch_and_queue_mentions(username: str) -> int:
         new_count = 0
         
         for mention in mentions:
+            # Filter out retweets - check if this is a retweet
+            referenced_tweets = mention.get('referenced_tweets', [])
+            is_retweet = False
+            for ref in referenced_tweets:
+                if ref.get('type') == 'retweeted':
+                    is_retweet = True
+                    break
+            
+            # Also check if text starts with "RT @" which is another retweet indicator
+            mention_text = mention.get('text', '')
+            if mention_text.startswith('RT @') or mention_text.startswith('rt @'):
+                is_retweet = True
+            
+            if is_retweet:
+                logger.info(f"⏭️  Skipping retweet: {mention.get('id')} - {mention_text[:50]}...")
+                continue
+            
             save_mention_to_queue(mention)
             new_count += 1
         
@@ -1491,6 +1509,19 @@ def process_x_mention(agent, x_client, mention_data, queue_filepath=None, testin
         conversation_id = mention.get('conversation_id')
         in_reply_to_user_id = mention.get('in_reply_to_user_id')
         referenced_tweets = mention.get('referenced_tweets', [])
+        
+        # Filter out retweets - additional safety check (in case they slip through)
+        is_retweet = False
+        for ref in referenced_tweets:
+            if ref.get('type') == 'retweeted':
+                is_retweet = True
+                logger.info(f"⏭️  Skipping retweet in process_x_mention: {mention_id}")
+                return "no_reply"
+        
+        # Also check text pattern
+        if mention_text.startswith('RT @') or mention_text.startswith('rt @'):
+            logger.info(f"⏭️  Skipping retweet (text pattern) in process_x_mention: {mention_id}")
+            return "no_reply"
         
         # Check downrank list - only respond to downranked users 10% of the time
         downrank_users = load_downrank_users()
