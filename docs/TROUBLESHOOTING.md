@@ -436,7 +436,41 @@ iotop
 
 **Solutions**:
 
-#### Option 1: Skip Recent Mentions (Recommended - Prevents the Cycle)
+#### Option 1: Start Fresh (Best for New Deployments/Key Changes)
+
+This is the **best solution** when you've:
+- Created a new Railway service
+- Changed API keys
+- Want to completely ignore all historical mentions
+- Want to prevent API limit issues from processing backlog
+
+1. Go to Railway → Your Service → **Variables** tab
+2. Add new variable:
+   - Name: `X_START_FRESH`
+   - Value: `true`
+3. Save/Deploy - Railway will redeploy
+4. Check logs - you should see: `🆕 Fresh start initialized: Set cutoff to mention [ID]`
+5. **You can leave this as `true` permanently** - it only initializes once on first run
+
+**How it works**:
+- On startup, fetches the most recent mention that exists (the last mention before startup)
+- Uses that mention ID as a cutoff marker - **this mention is NOT processed**
+- Sets that ID as `last_seen_id` (the cutoff point)
+- Only processes mentions created AFTER that cutoff ID
+- All past mentions (including the cutoff one) are ignored
+- Prevents API limit issues from processing backlog
+
+**Example:**
+- Service starts at 2:00 PM
+- Most recent mention found: ID `1234567890` (created at 1:55 PM - 5 minutes before startup)
+- Sets `last_seen_id = 1234567890` as cutoff
+- Mention `1234567890` is **NOT processed** (it's just a marker)
+- Only mentions with ID > `1234567890` are fetched and processed
+- All mentions up to and including `1234567890` are ignored
+
+**Perfect for**: New deployments, API key changes, or when you want a clean slate without processing old mentions.
+
+#### Option 2: Skip Recent Mentions (For Existing Deployments)
 
 This is the best solution because it prevents fetching old mentions in the first place:
 

@@ -230,6 +230,35 @@ class XClient:
         response = self._make_request(endpoint, params)
         return response.get("data") if response else None
     
+    def get_my_recent_tweets(self, max_results: int = 5) -> Optional[List[Dict]]:
+        """
+        Get the authenticated user's (bot's) recent tweets.
+        Used to establish a fresh starting point when X_START_FRESH is enabled.
+        
+        Args:
+            max_results: Number of recent tweets to fetch (1-100)
+            
+        Returns:
+            List of tweet objects or None if request failed
+        """
+        endpoint = f"/users/{self.user_id}/tweets"
+        params = {
+            "max_results": min(max(max_results, 1), 100),  # Ensure within API limits
+            "tweet.fields": "id,text,created_at",
+            "exclude": "retweets,replies"  # Only get original tweets
+        }
+        
+        logger.debug(f"Fetching bot's recent tweets to establish fresh starting point")
+        response = self._make_request(endpoint, params)
+        
+        if response and "data" in response:
+            tweets = response["data"]
+            logger.info(f"Retrieved {len(tweets)} of bot's recent tweets")
+            return tweets
+        else:
+            logger.warning("Failed to fetch bot's recent tweets")
+            return []
+    
     def search_mentions(self, username: str, max_results: int = 10, since_id: str = None) -> Optional[List[Dict]]:
         """
         Search for mentions using the search endpoint instead of mentions endpoint.
@@ -785,6 +814,82 @@ def load_last_seen_id() -> Optional[str]:
             logger.error(f"Error loading last seen ID: {e}")
     return None
 
+def initialize_fresh_start(client: XClient, username: str) -> bool:
+    """
+    Initialize a fresh start by fetching current mentions and using the most recent one as cutoff.
+    This ensures ONLY mentions created AFTER service startup are processed.
+    All past mentions (including recent ones) are IGNORED to prevent API limit issues.
+    
+    Strategy:
+    1. Fetch the most recent mention right now (to establish cutoff point)
+    2. Set that mention ID as last_seen_id (we DON'T process this one)
+    3. Only process mentions created AFTER this ID
+    
+    Args:
+        client: XClient instance
+        username: Bot's username (without @)
+        
+    Returns:
+        True if successfully initialized, False otherwise
+    """
+    try:
+        # Fetch the most recent mention to establish a cutoff point
+        # We will NOT process this mention - it's just used as a marker
+        logger.info("🆕 X_START_FRESH: Establishing fresh starting point...")
+        logger.info("   Fetching most recent mention to use as cutoff (this mention will NOT be processed)")
+        
+        # Try search endpoint first (last 7 days only, but that's fine)
+        mentions = client.search_mentions(
+            username=username,
+            max_results=1  # Just need the most recent one as a marker
+        )
+        
+        if mentions and len(mentions) > 0:
+            # Use this mention ID as the cutoff - we DON'T process it
+            cutoff_mention_id = mentions[0]['id']
+            save_last_seen_id(cutoff_mention_id)
+            logger.info(f"✅ Fresh start initialized: Set cutoff to mention {cutoff_mention_id}")
+            logger.info(f"   ⚠️  This mention will NOT be processed (it's just a marker)")
+            logger.info(f"   ✅ Only mentions created AFTER this ID will be processed")
+            logger.info(f"   🚫 All past mentions (including this one) are IGNORED")
+            return True
+        
+        # If no mentions in last 7 days, try mentions endpoint (no time limit)
+        logger.info("No mentions in last 7 days, trying mentions endpoint...")
+        try:
+            all_mentions = client.get_mentions(max_results=1)
+            if all_mentions and len(all_mentions) > 0:
+                cutoff_mention_id = all_mentions[0]['id']
+                save_last_seen_id(cutoff_mention_id)
+                logger.info(f"✅ Fresh start initialized: Set cutoff to mention {cutoff_mention_id} (via mentions endpoint)")
+                logger.info(f"   ⚠️  This mention will NOT be processed (it's just a marker)")
+                logger.info(f"   ✅ Only mentions created AFTER this ID will be processed")
+                logger.info(f"   🚫 All past mentions (including this one) are IGNORED")
+                return True
+        except Exception as e:
+            logger.debug(f"Mentions endpoint fallback failed: {e}")
+        
+        # Last resort: Use bot's most recent tweet as cutoff
+        logger.info("Trying bot's most recent tweet as cutoff...")
+        recent_tweets = client.get_my_recent_tweets(max_results=1)
+        if recent_tweets and len(recent_tweets) > 0:
+            cutoff_tweet_id = recent_tweets[0]['id']
+            save_last_seen_id(cutoff_tweet_id)
+            logger.info(f"✅ Fresh start initialized: Set cutoff to bot's tweet {cutoff_tweet_id}")
+            logger.info(f"   ✅ Only mentions created AFTER this tweet will be processed")
+            logger.info(f"   🚫 All past mentions are IGNORED")
+            return True
+        
+        # If absolutely nothing found, don't set last_seen_id
+        # This means the next fetch will get all mentions, but we'll set last_seen_id after first fetch
+        logger.warning("⚠️  Could not find any mentions or tweets to use as cutoff")
+        logger.warning("   Will process from next fetch cycle (first fetch will establish cutoff)")
+        # Return True anyway - we'll handle it in the fetch function
+        return True
+    except Exception as e:
+        logger.error(f"Error initializing fresh start: {e}")
+        return False
+
 def save_last_seen_id(mention_id: str):
     """Save the last seen mention ID."""
     try:
@@ -1097,14 +1202,43 @@ def fetch_and_queue_mentions(username: str) -> int:
     Single-pass function to fetch new mentions and queue them.
     Returns number of new mentions found.
     
-    Supports skipping recent mentions via X_SKIP_RECENT_MENTIONS environment variable.
-    This is useful when you want to skip old mentions after rate limit issues.
+    Supports:
+    - X_START_FRESH: If set to 'true', ignores all old mentions and only processes new ones
+    - X_SKIP_RECENT_MENTIONS: Skip N most recent mentions (useful after rate limit issues)
     """
     try:
+        import os
         client = create_x_client()
+        
+        # Check if we should start fresh (ignore all old mentions)
+        start_fresh = os.getenv('X_START_FRESH', '').lower() == 'true'
+        if start_fresh:
+            # Check if we've already initialized fresh start (check if file exists and has a value)
+            if not X_LAST_SEEN_FILE.exists() or not load_last_seen_id():
+                logger.info("🆕 X_START_FRESH is enabled - initializing fresh start...")
+                if initialize_fresh_start(client, username):
+                    logger.info("✅ Fresh start initialized successfully")
+                else:
+                    logger.warning("⚠️  Failed to initialize fresh start, will process from beginning")
+            else:
+                # Already initialized, just log
+                logger.debug("Fresh start already initialized (X_START_FRESH=true but last_seen_id exists)")
         
         # Load last seen ID for incremental fetching
         last_seen_id = load_last_seen_id()
+        
+        if start_fresh and not last_seen_id:
+            # If X_START_FRESH is enabled but we couldn't establish a cutoff,
+            # fetch mentions now and use the most recent one as cutoff (don't process any)
+            logger.info("🆕 X_START_FRESH: No cutoff established yet, fetching to create one...")
+            initial_mentions = client.search_mentions(username=username, max_results=1)
+            if initial_mentions and len(initial_mentions) > 0:
+                cutoff_id = initial_mentions[0]['id']
+                save_last_seen_id(cutoff_id)
+                last_seen_id = cutoff_id
+                logger.info(f"✅ Established cutoff: {cutoff_id} (this mention will NOT be processed)")
+            else:
+                logger.info("   No mentions found - will process only new mentions going forward")
         
         logger.info(f"Fetching mentions for @{username} since {last_seen_id or 'beginning'}")
 

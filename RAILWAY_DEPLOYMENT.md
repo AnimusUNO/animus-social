@@ -120,6 +120,7 @@ Railway will automatically:
 | `X_ACCESS_TOKEN` | Yes | OAuth access token |
 | `X_ACCESS_TOKEN_SECRET` | Yes | OAuth access token secret |
 | `X_POLLING_INTERVAL_SEC` | No | Polling interval in seconds (default: 60) |
+| `X_START_FRESH` | No | Set to `true` to ignore all old mentions and only process new ones created after service starts. Uses the most recent mention before startup as a cutoff marker (that mention is NOT processed). **Perfect for new deployments or after API key changes.** |
 | `X_SKIP_RECENT_MENTIONS` | No | Number of most recent mentions to skip (default: 0). Useful after rate limit issues to skip old mentions. **Set back to 0 after use.** |
 | `CLEAR_X_QUEUE_ON_START` | No | Set to `true` to clear queued mentions on startup (useful after rate limit issues). **Remember to set back to `false` or delete after use.** |
 
@@ -194,13 +195,35 @@ python platforms/x/orchestrator.py bot
 - Verify `PYTHONPATH` is set if needed: `PYTHONPATH=.`
 - Ensure all dependencies are in `requirements.txt`
 
-### X API Rate Limit Issues - Skipping Old Mentions
+### X API Rate Limit Issues - Starting Fresh
 
-If you've hit X API rate limits and the orchestrator keeps trying to process old mentions:
+If you've hit X API rate limits, changed API keys, or want to ignore all old mentions:
 
-**The Problem**: After rate limit issues, when the orchestrator restarts, it fetches ALL mentions since the last checkpoint and tries to process them all, hitting rate limits again.
+**The Problem**: After rate limit issues or API key changes, when the orchestrator restarts, it fetches ALL mentions since the last checkpoint and tries to process them all, hitting rate limits again.
 
-**Solution: Skip Recent Mentions** (Recommended):
+**Solution 1: Start Fresh** (Best for New Deployments/Key Changes):
+
+1. Go to **Variables** tab
+2. Add: `X_START_FRESH` = `true`
+3. Save/Deploy
+4. Check logs - you should see: `🆕 Fresh start initialized`
+5. **The orchestrator will only process mentions created AFTER the service starts**
+6. **You can leave this as `true` permanently** - it only initializes once on first run
+
+**How it works:**
+- On startup, fetches the most recent mention that exists (the last mention before startup)
+- Uses that mention ID as a cutoff marker (this mention is NOT processed)
+- Only processes mentions created AFTER that cutoff ID
+- All past mentions (including the cutoff one) are ignored
+- Prevents API limit issues from processing backlog
+
+This is perfect when:
+- You've created a new service/deployment
+- You've changed API keys
+- You want to ignore all historical mentions
+- You want to prevent API limit issues from old mentions
+
+**Solution 2: Skip Recent Mentions** (For Existing Deployments):
 
 1. Go to **Variables** tab
 2. Add: `X_SKIP_RECENT_MENTIONS` = `20` (or however many mentions you want to skip)
