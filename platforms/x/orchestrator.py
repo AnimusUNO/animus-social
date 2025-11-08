@@ -1117,6 +1117,13 @@ def save_cached_tweets(tweets_data: List[Dict], users_data: Dict[str, Dict] = No
 
 def get_cached_user_info() -> Optional[Dict]:
     """Load cached user info if available and not expired."""
+    # Check if we should force refresh (via environment variable)
+    import os
+    force_refresh = os.getenv('X_FORCE_REFRESH_USER_INFO', '').lower() == 'true'
+    if force_refresh:
+        logger.info("🔄 X_FORCE_REFRESH_USER_INFO is set - skipping cache, will fetch fresh user info")
+        return None
+    
     cache_file = X_CACHE_DIR / "user_info.json"
     if cache_file.exists():
         try:

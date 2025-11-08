@@ -121,6 +121,7 @@ Railway will automatically:
 | `X_ACCESS_TOKEN_SECRET` | Yes | OAuth access token secret |
 | `X_POLLING_INTERVAL_SEC` | No | Polling interval in seconds (default: 60) |
 | `X_START_FRESH` | No | Set to `true` to ignore all old mentions and only process new ones created after service starts. Uses the most recent mention before startup as a cutoff marker (that mention is NOT processed). **Perfect for new deployments or after API key changes.** |
+| `X_FORCE_REFRESH_USER_INFO` | No | Set to `true` to force refresh cached user info (useful after changing API keys/accounts). **Set back to `false` or delete after use.** |
 | `X_SKIP_RECENT_MENTIONS` | No | Number of most recent mentions to skip (default: 0). Useful after rate limit issues to skip old mentions. **Set back to 0 after use.** |
 | `CLEAR_X_QUEUE_ON_START` | No | Set to `true` to clear queued mentions on startup (useful after rate limit issues). **Remember to set back to `false` or delete after use.** |
 
