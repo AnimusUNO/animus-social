@@ -24,28 +24,17 @@ def get_letta_client():
 def get_x_letta_client():
     """Get a Letta client using X configuration."""
     try:
-        import yaml
-        from pathlib import Path
+        from core.config import get_letta_config
         from letta_client import Letta
-
-        # Load config/platforms.yaml
-        config_path = Path("config/platforms.yaml")
-        if not config_path.exists():
-            # Fall back to regular client if config/platforms.yaml doesn't exist
-            return get_letta_client()
-
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-
-        letta_config = config.get('letta', {})
+        config = get_letta_config()
         client_params = {
-            'token': letta_config['api_key'],
-            'timeout': letta_config.get('timeout', 600)
+            'token': config['api_key'],
+            'timeout': config.get('timeout', 600)
         }
-        if letta_config.get('base_url'):
-            client_params['base_url'] = letta_config['base_url']
+        if config.get('base_url'):
+            client_params['base_url'] = config['base_url']
         return Letta(**client_params)
-    except (ImportError, FileNotFoundError, KeyError, yaml.YAMLError):
+    except (ImportError, FileNotFoundError, KeyError):
         # Fall back to regular client
         return get_letta_client()
 
