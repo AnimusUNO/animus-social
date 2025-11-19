@@ -428,6 +428,116 @@ htop
 iotop
 ```
 
+### X Queue Clearing After Rate Limit Issues
+
+**Error**: `X API rate limit exceeded` or `Too many requests` - orchestrator keeps trying to process old mentions
+
+**Problem**: When the X API hits rate limits (e.g., after retweet spam), the orchestrator may have missed many mentions. When it restarts, it fetches ALL mentions since the last checkpoint and tries to process them all, hitting rate limits again. This creates a cycle where it can't recover.
+
+**Solutions**:
+
+#### Option 1: Start Fresh (Best for New Deployments/Key Changes)
+
+This is the **best solution** when you've:
+- Created a new Railway service
+- Changed API keys
+- Want to completely ignore all historical mentions
+- Want to prevent API limit issues from processing backlog
+
+1. Go to Railway → Your Service → **Variables** tab
+2. Add new variable:
+   - Name: `X_START_FRESH`
+   - Value: `true`
+3. Save/Deploy - Railway will redeploy
+4. Check logs - you should see: `🆕 Fresh start initialized: Set cutoff to mention [ID]`
+5. **You can leave this as `true` permanently** - it only initializes once on first run
+
+**How it works**:
+- On startup, fetches the most recent mention that exists (the last mention before startup)
+- Uses that mention ID as a cutoff marker - **this mention is NOT processed**
+- Sets that ID as `last_seen_id` (the cutoff point)
+- Only processes mentions created AFTER that cutoff ID
+- All past mentions (including the cutoff one) are ignored
+- Prevents API limit issues from processing backlog
+
+**Example:**
+- Service starts at 2:00 PM
+- Most recent mention found: ID `1234567890` (created at 1:55 PM - 5 minutes before startup)
+- Sets `last_seen_id = 1234567890` as cutoff
+- Mention `1234567890` is **NOT processed** (it's just a marker)
+- Only mentions with ID > `1234567890` are fetched and processed
+- All mentions up to and including `1234567890` are ignored
+
+**Perfect for**: New deployments, API key changes, or when you want a clean slate without processing old mentions.
+
+#### Option 2: Skip Recent Mentions (For Existing Deployments)
+
+This is the best solution because it prevents fetching old mentions in the first place:
+
+1. Go to Railway → Your Service → **Variables** tab
+2. Add new variable:
+   - Name: `X_SKIP_RECENT_MENTIONS`
+   - Value: `20` (or however many mentions you want to skip)
+3. Save/Deploy - Railway will redeploy
+4. Check logs - you should see: `⏭️ Skipping 20 most recent mentions`
+5. **Important**: After the orchestrator runs once and processes new mentions, set it back to `0` or delete the variable
+
+**How it works**:
+- When fetching mentions, skips the most recent N mentions
+- Updates `last_seen_id` to include skipped mentions (so they won't be fetched again)
+- Only processes new mentions going forward
+- Breaks the cycle of trying to process old mentions
+
+**Example**: If you have 20 old mentions you want to skip:
+```bash
+X_SKIP_RECENT_MENTIONS=20
+```
+After one polling cycle, the orchestrator will have moved past those 20 mentions and will only process new ones. Then set it back to `0`.
+
+#### Option 3: Clear Queue via Environment Variable
+
+If you also have queued files that need clearing:
+
+Set the `CLEAR_X_QUEUE_ON_START` environment variable in Railway:
+
+1. Go to Railway → Your Service → **Variables** tab
+2. Add new variable:
+   - Name: `CLEAR_X_QUEUE_ON_START`
+   - Value: `true`
+3. Save/Deploy - Railway will redeploy
+4. Check logs - you should see: `✅ Cleared X queue files`
+5. **Important**: After clearing, set it back to `false` or delete the variable (to avoid clearing on every restart)
+
+#### Option 4: Use Clear Queue Script
+
+If you have console/SSH access:
+
+```bash
+# Clear queue files (keeps processed_mentions.json)
+python scripts/clear_x_queue.py
+
+# Or archive instead of delete
+python scripts/clear_x_queue.py --archive
+
+# Clear everything including processed mentions (not recommended)
+python scripts/clear_x_queue.py --clear-processed
+```
+
+#### Option 5: Manual Deletion
+
+If you have file system access:
+
+```bash
+# Delete all queued mentions
+rm -f data/queues/x/x_mention_*.json
+
+# Optional: Clear error/no_reply directories
+rm -rf data/queues/x/errors/*
+rm -rf data/queues/x/no_reply/*
+```
+
+**Note**: The `processed_mentions.json` file is kept by default, so old mentions won't be reprocessed if they're fetched again. This is the recommended behavior.
+
 ## Performance Issues
 
 ### High Memory Usage

@@ -615,6 +615,20 @@ def get_bluesky_config() -> Dict[str, Any]:
         'pds_uri': config.get('bluesky.pds_uri', 'https://bsky.social'),
     }
 
+def get_x_config() -> Dict[str, Any]:
+    """Get X (Twitter) configuration from config.yaml."""
+    config = get_config()
+    return {
+        'api_key': config.get_required('platforms.x.api_key'),
+        'user_id': config.get_required('platforms.x.user_id'),
+        'consumer_key': config.get('platforms.x.consumer_key'),
+        'consumer_secret': config.get('platforms.x.consumer_secret'),
+        'access_token': config.get('platforms.x.access_token'),
+        'access_token_secret': config.get('platforms.x.access_token_secret'),
+        'polling_interval_sec': config.get('platforms.x.polling_interval_sec', 60),
+        'skip_recent_mentions': config.get('platforms.x.skip_recent_mentions', 0),
+    }
+
 def get_bot_config() -> Dict[str, Any]:
     """Get bot behavior configuration."""
     config = get_config()

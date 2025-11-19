@@ -28,10 +28,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("x_client")
 
-def setup_logging_from_config(config_path: str = "config/platforms.yaml"):
-    """Configure logging based on config/platforms.yaml settings."""
+def setup_logging_from_config(config_path: str = "config.yaml"):
+    """Configure logging based on config.yaml settings."""
     try:
-        config = load_x_config(config_path)
+        from core.config import get_config
+        config_obj = get_config(config_path)
+        config = {
+            'x': {},
+            'letta': {},
+            'logging': config_obj.get('logging', {})
+        }
         logging_config = config.get('logging', {})
         log_level = logging_config.get('level', 'INFO').upper()
 
@@ -214,8 +220,8 @@ class XClient:
                 logger.warning("Request failed - no response received")
             return []
     
-    def get_user_info(self, user_id: str) -> Optional[Dict]:
-        """Get information about a specific user."""
+    def get_user_info_by_id(self, user_id: str) -> Optional[Dict]:
+        """Get information about a specific user by their user ID."""
         endpoint = f"/users/{user_id}"
         params = {
             "user.fields": "id,name,username,description,public_metrics"
@@ -223,6 +229,35 @@ class XClient:
         
         response = self._make_request(endpoint, params)
         return response.get("data") if response else None
+    
+    def get_my_recent_tweets(self, max_results: int = 5) -> Optional[List[Dict]]:
+        """
+        Get the authenticated user's (bot's) recent tweets.
+        Used to establish a fresh starting point when X_START_FRESH is enabled.
+        
+        Args:
+            max_results: Number of recent tweets to fetch (1-100)
+            
+        Returns:
+            List of tweet objects or None if request failed
+        """
+        endpoint = f"/users/{self.user_id}/tweets"
+        params = {
+            "max_results": min(max(max_results, 1), 100),  # Ensure within API limits
+            "tweet.fields": "id,text,created_at",
+            "exclude": "retweets,replies"  # Only get original tweets
+        }
+        
+        logger.debug(f"Fetching bot's recent tweets to establish fresh starting point")
+        response = self._make_request(endpoint, params)
+        
+        if response and "data" in response:
+            tweets = response["data"]
+            logger.info(f"Retrieved {len(tweets)} of bot's recent tweets")
+            return tweets
+        else:
+            logger.warning("Failed to fetch bot's recent tweets")
+            return []
     
     def search_mentions(self, username: str, max_results: int = 10, since_id: str = None) -> Optional[List[Dict]]:
         """
@@ -239,8 +274,9 @@ class XClient:
         """
         endpoint = "/tweets/search/recent"
         
-        # Search for mentions of the username
-        query = f"@{username}"
+        # Search for mentions of the username, excluding retweets
+        # -is:retweet excludes retweets from results
+        query = f"@{username} -is:retweet"
         
         params = {
             "query": query,
@@ -288,6 +324,7 @@ class XClient:
         # First, get the original tweet directly since it might not appear in conversation search
         logger.debug(f"Getting thread context for conversation {conversation_id}")
         original_tweet = None
+        original_users_data = {}
         try:
             endpoint = f"/tweets/{conversation_id}"
             params = {
@@ -300,6 +337,11 @@ class XClient:
             if response and "data" in response:
                 original_tweet = response["data"]
                 logger.info(f"Retrieved original tweet: {original_tweet.get('id')}")
+                # Extract user data from the original tweet response
+                if "includes" in response and "users" in response["includes"]:
+                    for user in response["includes"]["users"]:
+                        original_users_data[user["id"]] = user
+                        logger.debug(f"Found user data for {user['id']}: @{user.get('username')}")
         except Exception as e:
             logger.warning(f"Could not fetch original tweet {conversation_id}: {e}")
         
@@ -325,6 +367,9 @@ class XClient:
         
         tweets = []
         users_data = {}
+        
+        # Start with user data from original tweet fetch
+        users_data.update(original_users_data)
         
         # Collect tweets from search
         if response and "data" in response:
@@ -578,39 +623,28 @@ class XClient:
         user_info = self.get_user_info("id,username,name")
         return user_info.get("username") if user_info else None
 
-def load_x_config(config_path: str = "config/platforms.yaml") -> Dict[str, Any]:
-    """Load complete X configuration from config/platforms.yaml."""
-    try:
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
+def load_x_config(config_path: str = "config.yaml") -> Dict[str, Any]:
+    """
+    Load complete X configuration from config.yaml.
+    
+    DEPRECATED: Use core.config.get_x_config() and core.config.get_letta_config() instead.
+    Kept for backward compatibility.
+    """
+    from core.config import get_x_config, get_letta_config
+    return {
+        'x': get_x_config(),
+        'letta': get_letta_config()
+    }
 
-        if not config:
-            raise ValueError(f"Empty or invalid configuration file: {config_path}")
+def get_x_letta_config(config_path: str = "config.yaml") -> Dict[str, Any]:
+    """Get Letta configuration from config.yaml."""
+    from core.config import get_letta_config
+    return get_letta_config()
 
-        # Validate required sections
-        x_config = config.get('x', {})
-        letta_config = config.get('letta', {})
-
-        if not x_config.get('api_key') or not x_config.get('user_id'):
-            raise ValueError("X API key and user_id must be configured in config/platforms.yaml")
-
-        if not letta_config.get('api_key') or not letta_config.get('agent_id'):
-            raise ValueError("Letta API key and agent_id must be configured in config/platforms.yaml")
-
-        return config
-    except Exception as e:
-        logger.error(f"Failed to load X configuration: {e}")
-        raise
-
-def get_x_letta_config(config_path: str = "config/platforms.yaml") -> Dict[str, Any]:
-    """Get Letta configuration from X config file."""
-    config = load_x_config(config_path)
-    return config['letta']
-
-def create_x_client(config_path: str = "config/platforms.yaml") -> XClient:
-    """Create and return an X client with configuration loaded from file."""
-    config = load_x_config(config_path)
-    x_config = config['x']
+def create_x_client(config_path: str = "config.yaml") -> XClient:
+    """Create and return an X client with configuration loaded from config.yaml."""
+    from core.config import get_x_config
+    x_config = get_x_config()
     return XClient(
         api_key=x_config['api_key'],
         user_id=x_config['user_id'],
@@ -707,7 +741,13 @@ def ensure_x_user_blocks_attached(thread_data: Dict, agent_id: Optional[str] = N
 
         # Get Letta client and agent_id from X config
         config = get_x_letta_config()
-        client = Letta(token=config['api_key'], timeout=config['timeout'])
+        client_params = {
+            'token': config['api_key'],
+            'timeout': config['timeout']
+        }
+        if config.get('base_url'):
+            client_params['base_url'] = config['base_url']
+        client = Letta(**client_params)
         
         # Use provided agent_id or get from config
         if agent_id is None:
@@ -773,6 +813,82 @@ def load_last_seen_id() -> Optional[str]:
         except Exception as e:
             logger.error(f"Error loading last seen ID: {e}")
     return None
+
+def initialize_fresh_start(client: XClient, username: str) -> bool:
+    """
+    Initialize a fresh start by fetching current mentions and using the most recent one as cutoff.
+    This ensures ONLY mentions created AFTER service startup are processed.
+    All past mentions (including recent ones) are IGNORED to prevent API limit issues.
+    
+    Strategy:
+    1. Fetch the most recent mention right now (to establish cutoff point)
+    2. Set that mention ID as last_seen_id (we DON'T process this one)
+    3. Only process mentions created AFTER this ID
+    
+    Args:
+        client: XClient instance
+        username: Bot's username (without @)
+        
+    Returns:
+        True if successfully initialized, False otherwise
+    """
+    try:
+        # Fetch the most recent mention to establish a cutoff point
+        # We will NOT process this mention - it's just used as a marker
+        logger.info("🆕 X_START_FRESH: Establishing fresh starting point...")
+        logger.info("   Fetching most recent mention to use as cutoff (this mention will NOT be processed)")
+        
+        # Try search endpoint first (last 7 days only, but that's fine)
+        mentions = client.search_mentions(
+            username=username,
+            max_results=1  # Just need the most recent one as a marker
+        )
+        
+        if mentions and len(mentions) > 0:
+            # Use this mention ID as the cutoff - we DON'T process it
+            cutoff_mention_id = mentions[0]['id']
+            save_last_seen_id(cutoff_mention_id)
+            logger.info(f"✅ Fresh start initialized: Set cutoff to mention {cutoff_mention_id}")
+            logger.info(f"   ⚠️  This mention will NOT be processed (it's just a marker)")
+            logger.info(f"   ✅ Only mentions created AFTER this ID will be processed")
+            logger.info(f"   🚫 All past mentions (including this one) are IGNORED")
+            return True
+        
+        # If no mentions in last 7 days, try mentions endpoint (no time limit)
+        logger.info("No mentions in last 7 days, trying mentions endpoint...")
+        try:
+            all_mentions = client.get_mentions(max_results=1)
+            if all_mentions and len(all_mentions) > 0:
+                cutoff_mention_id = all_mentions[0]['id']
+                save_last_seen_id(cutoff_mention_id)
+                logger.info(f"✅ Fresh start initialized: Set cutoff to mention {cutoff_mention_id} (via mentions endpoint)")
+                logger.info(f"   ⚠️  This mention will NOT be processed (it's just a marker)")
+                logger.info(f"   ✅ Only mentions created AFTER this ID will be processed")
+                logger.info(f"   🚫 All past mentions (including this one) are IGNORED")
+                return True
+        except Exception as e:
+            logger.debug(f"Mentions endpoint fallback failed: {e}")
+        
+        # Last resort: Use bot's most recent tweet as cutoff
+        logger.info("Trying bot's most recent tweet as cutoff...")
+        recent_tweets = client.get_my_recent_tweets(max_results=1)
+        if recent_tweets and len(recent_tweets) > 0:
+            cutoff_tweet_id = recent_tweets[0]['id']
+            save_last_seen_id(cutoff_tweet_id)
+            logger.info(f"✅ Fresh start initialized: Set cutoff to bot's tweet {cutoff_tweet_id}")
+            logger.info(f"   ✅ Only mentions created AFTER this tweet will be processed")
+            logger.info(f"   🚫 All past mentions are IGNORED")
+            return True
+        
+        # If absolutely nothing found, don't set last_seen_id
+        # This means the next fetch will get all mentions, but we'll set last_seen_id after first fetch
+        logger.warning("⚠️  Could not find any mentions or tweets to use as cutoff")
+        logger.warning("   Will process from next fetch cycle (first fetch will establish cutoff)")
+        # Return True anyway - we'll handle it in the fetch function
+        return True
+    except Exception as e:
+        logger.error(f"Error initializing fresh start: {e}")
+        return False
 
 def save_last_seen_id(mention_id: str):
     """Save the last seen mention ID."""
@@ -1001,6 +1117,13 @@ def save_cached_tweets(tweets_data: List[Dict], users_data: Dict[str, Dict] = No
 
 def get_cached_user_info() -> Optional[Dict]:
     """Load cached user info if available and not expired."""
+    # Check if we should force refresh (via environment variable)
+    import os
+    force_refresh = os.getenv('X_FORCE_REFRESH_USER_INFO', '').lower() == 'true'
+    if force_refresh:
+        logger.info("🔄 X_FORCE_REFRESH_USER_INFO is set - skipping cache, will fetch fresh user info")
+        return None
+    
     cache_file = X_CACHE_DIR / "user_info.json"
     if cache_file.exists():
         try:
@@ -1085,39 +1208,106 @@ def fetch_and_queue_mentions(username: str) -> int:
     """
     Single-pass function to fetch new mentions and queue them.
     Returns number of new mentions found.
+    
+    Supports:
+    - X_START_FRESH: If set to 'true', ignores all old mentions and only processes new ones
+    - X_SKIP_RECENT_MENTIONS: Skip N most recent mentions (useful after rate limit issues)
     """
     try:
+        import os
         client = create_x_client()
+        
+        # Check if we should start fresh (ignore all old mentions)
+        start_fresh = os.getenv('X_START_FRESH', '').lower() == 'true'
+        if start_fresh:
+            # Check if we've already initialized fresh start (check if file exists and has a value)
+            if not X_LAST_SEEN_FILE.exists() or not load_last_seen_id():
+                logger.info("🆕 X_START_FRESH is enabled - initializing fresh start...")
+                if initialize_fresh_start(client, username):
+                    logger.info("✅ Fresh start initialized successfully")
+                else:
+                    logger.warning("⚠️  Failed to initialize fresh start, will process from beginning")
+            else:
+                # Already initialized, just log
+                logger.debug("Fresh start already initialized (X_START_FRESH=true but last_seen_id exists)")
         
         # Load last seen ID for incremental fetching
         last_seen_id = load_last_seen_id()
+        
+        if start_fresh and not last_seen_id:
+            # If X_START_FRESH is enabled but we couldn't establish a cutoff,
+            # fetch mentions now and use the most recent one as cutoff (don't process any)
+            logger.info("🆕 X_START_FRESH: No cutoff established yet, fetching to create one...")
+            initial_mentions = client.search_mentions(username=username, max_results=1)
+            if initial_mentions and len(initial_mentions) > 0:
+                cutoff_id = initial_mentions[0]['id']
+                save_last_seen_id(cutoff_id)
+                last_seen_id = cutoff_id
+                logger.info(f"✅ Established cutoff: {cutoff_id} (this mention will NOT be processed)")
+            else:
+                logger.info("   No mentions found - will process only new mentions going forward")
         
         logger.info(f"Fetching mentions for @{username} since {last_seen_id or 'beginning'}")
 
         # Search for mentions - this calls GET /2/tweets/search/recent
         logger.debug(f"Calling search_mentions API for @{username}")
-        mentions = client.search_mentions(
+        all_mentions = client.search_mentions(
             username=username,
             since_id=last_seen_id,
             max_results=100  # Get as many as possible
         )
         
-        if not mentions:
+        if not all_mentions:
             logger.info("No new mentions found")
             return 0
+        
+        # Check if we should skip recent mentions (via environment variable)
+        # This is useful when you want to skip old mentions after rate limit issues
+        import os
+        skip_recent = int(os.getenv('X_SKIP_RECENT_MENTIONS', '0'))
+        mentions = all_mentions
+        
+        if skip_recent > 0 and len(mentions) > skip_recent:
+            logger.info(f"⏭️  Skipping {skip_recent} most recent mentions (X_SKIP_RECENT_MENTIONS={skip_recent})")
+            # Skip the most recent N mentions (they're already sorted newest first)
+            mentions = mentions[skip_recent:]
+            logger.info(f"   Processing {len(mentions)} remaining mentions (skipped {skip_recent})")
         
         # Process mentions (newest first, so reverse to process oldest first)
         mentions.reverse()
         new_count = 0
         
         for mention in mentions:
+            # Filter out retweets - check if this is a retweet
+            referenced_tweets = mention.get('referenced_tweets', [])
+            is_retweet = False
+            for ref in referenced_tweets:
+                if ref.get('type') == 'retweeted':
+                    is_retweet = True
+                    break
+            
+            # Also check if text starts with "RT @" which is another retweet indicator
+            mention_text = mention.get('text', '')
+            if mention_text.startswith('RT @') or mention_text.startswith('rt @'):
+                is_retweet = True
+            
+            if is_retweet:
+                logger.info(f"⏭️  Skipping retweet: {mention.get('id')} - {mention_text[:50]}...")
+                continue
+            
             save_mention_to_queue(mention)
             new_count += 1
         
-        # Update last seen ID to the most recent mention
-        if mentions:
-            most_recent_id = mentions[-1]['id']  # Last after reverse = most recent
+        # Update last seen ID to the most recent mention (including skipped ones)
+        # This ensures we don't fetch the skipped mentions again on next run
+        if all_mentions:
+            # Most recent is the first one (newest first from API)
+            most_recent_id = all_mentions[0]['id']
             save_last_seen_id(most_recent_id)
+            if skip_recent > 0:
+                logger.info(f"✅ Updated last_seen_id to {most_recent_id} (skipped {skip_recent} mentions, won't fetch again)")
+            else:
+                logger.debug(f"Updated last_seen_id to {most_recent_id}")
         
         logger.info(f"Queued {new_count} new X mentions")
         return new_count
@@ -1142,8 +1332,10 @@ def get_my_user_info():
             print(f"   Username: @{user_data.get('username')}")
             print(f"   Name: {user_data.get('name')}")
             print(f"   Description: {user_data.get('description', 'N/A')[:100]}...")
-            print(f"\n🔧 Update your config/platforms.yaml with:")
-            print(f"   user_id: \"{user_data.get('id')}\"")
+            print(f"\n🔧 Update your config.yaml with:")
+            print(f"   platforms:")
+            print(f"     x:")
+            print(f"       user_id: \"{user_data.get('id')}\"")
             return user_data
         else:
             print("❌ Failed to get user information")
@@ -1283,7 +1475,7 @@ def test_letta_integration(agent_id: str = None):
                     agent_id = config_agent_id
                     print(f"ℹ️ Using agent_id from config: {agent_id}")
                 else:
-                    print("❌ No agent_id found in config/platforms.yaml")
+                    print("❌ No agent_id found in config.yaml")
                     print("Expected config structure:")
                     print("  letta:")
                     print("    agent_id: your-agent-id")
@@ -1296,7 +1488,7 @@ def test_letta_integration(agent_id: str = None):
                 import os
                 api_key = os.getenv('LETTA_API_KEY')
                 if not api_key:
-                    print("❌ LETTA_API_KEY not found in config/platforms.yaml or environment")
+                    print("❌ LETTA_API_KEY not found in config.yaml or environment")
                     print("Expected config structure:")
                     print("  letta:")
                     print("    api_key: your-letta-api-key")
@@ -1304,7 +1496,7 @@ def test_letta_integration(agent_id: str = None):
                 else:
                     print("ℹ️ Using LETTA_API_KEY from environment")
             else:
-                print("ℹ️ Using LETTA_API_KEY from config/platforms.yaml")
+                print("ℹ️ Using LETTA_API_KEY from config.yaml")
                 
         except Exception as e:
             print(f"❌ Error loading config: {e}")
@@ -1480,6 +1672,19 @@ def process_x_mention(agent, x_client, mention_data, queue_filepath=None, testin
         in_reply_to_user_id = mention.get('in_reply_to_user_id')
         referenced_tweets = mention.get('referenced_tweets', [])
         
+        # Filter out retweets - additional safety check (in case they slip through)
+        is_retweet = False
+        for ref in referenced_tweets:
+            if ref.get('type') == 'retweeted':
+                is_retweet = True
+                logger.info(f"⏭️  Skipping retweet in process_x_mention: {mention_id}")
+                return "no_reply"
+        
+        # Also check text pattern
+        if mention_text.startswith('RT @') or mention_text.startswith('rt @'):
+            logger.info(f"⏭️  Skipping retweet (text pattern) in process_x_mention: {mention_id}")
+            return "no_reply"
+        
         # Check downrank list - only respond to downranked users 10% of the time
         downrank_users = load_downrank_users()
         if not should_respond_to_downranked_user(str(author_id), downrank_users):
@@ -1647,6 +1852,25 @@ def process_x_mention(agent, x_client, mention_data, queue_filepath=None, testin
         author_username = author_info.get('username', 'unknown')
         author_name = author_info.get('name', author_username)
         
+        # Fallback: If username is still unknown, try fetching user info directly by ID
+        if author_username == 'unknown' and author_id:
+            logger.warning(f"Username not found in thread_data for author_id {author_id}, fetching directly...")
+            try:
+                # Use the XClient method to get user info by ID
+                user_info = x_client.get_user_info_by_id(author_id)
+                if user_info:
+                    author_username = user_info.get('username', 'unknown')
+                    author_name = user_info.get('name', author_username)
+                    logger.info(f"Fetched username for {author_id}: @{author_username}")
+                    # Add to thread_data for future reference
+                    if 'users' not in thread_data:
+                        thread_data['users'] = {}
+                    thread_data['users'][author_id] = user_info
+                else:
+                    logger.warning(f"Failed to fetch user info for {author_id}: user not found")
+            except Exception as e:
+                logger.warning(f"Failed to fetch user info for {author_id}: {e}")
+        
         # Create prompt for Letta agent using configuration
         config = get_config()
         prompt = generate_mention_prompt(
@@ -1669,7 +1893,13 @@ def process_x_mention(agent, x_client, mention_data, queue_filepath=None, testin
         from letta_client import Letta
 
         config = get_x_letta_config()
-        letta_client = Letta(token=config['api_key'], timeout=config['timeout'])
+        client_params = {
+            'token': config['api_key'],
+            'timeout': config['timeout']
+        }
+        if config.get('base_url'):
+            client_params['base_url'] = config['base_url']
+        letta_client = Letta(**client_params)
         
         prompt_char_count = len(prompt)
         logger.debug(f"Sending to LLM: @{author_username} mention | msg: \"{mention_text[:50]}...\" | context: {len(thread_context)} chars | prompt: {prompt_char_count} chars")
@@ -1902,8 +2132,20 @@ def acknowledge_x_post(x_client, post_id, note=None):
         True if successful, False otherwise
     """
     try:
+        # Check if Bluesky is configured before attempting acknowledgment
+        from core.config import get_config
+        config = get_config()
+        
+        if not config.is_platform_enabled('bluesky'):
+            logger.debug("Bluesky not enabled, skipping X post acknowledgment")
+            return True  # Not an error, just skipped
+        
         # Use Bluesky client to upload acks to the agent data repository on atproto
-        bsky_client = bsky_utils.default_login()
+        try:
+            bsky_client = bsky_utils.default_login()
+        except Exception as bsky_error:
+            logger.debug(f"Bluesky client not available (missing config): {bsky_error}. Skipping X post acknowledgment.")
+            return True  # Not an error, just skipped
         
         # Create a synthetic URI and CID for the X post
         # X posts don't have atproto URIs/CIDs, so we create identifiers
@@ -1917,12 +2159,82 @@ def acknowledge_x_post(x_client, post_id, note=None):
             logger.debug(f"Acknowledged X post {post_id} via atproto" + (f" with note: {note[:50]}..." if note else ""))
             return True
         else:
-            logger.error(f"Failed to acknowledge X post {post_id}")
-            return False
+            logger.debug(f"Failed to acknowledge X post {post_id} (non-critical)")
+            return False  # Non-critical failure
             
     except Exception as e:
-        logger.error(f"Error acknowledging X post {post_id}: {e}")
-        return False
+        logger.debug(f"Error acknowledging X post {post_id} (non-critical): {e}")
+        return False  # Don't let acknowledgment failures stop processing
+
+def clean_hashtags(text: str) -> str:
+    """
+    Remove all hashtags from text.
+    Hashtags are not allowed in Bianca's responses.
+    
+    Args:
+        text: Text that may contain hashtags
+        
+    Returns:
+        Text with all hashtags removed
+    """
+    import re
+    # Remove hashtags (word starting with #)
+    cleaned = re.sub(r'#\w+', '', text)
+    # Clean up extra spaces that might be left
+    cleaned = re.sub(r'\s+', ' ', cleaned)
+    return cleaned.strip()
+
+def clean_excessive_emojis(text: str, max_emojis: int = 3) -> str:
+    """
+    Clean excessive emojis from text, keeping only the first max_emojis.
+    This prevents emoji spam in responses.
+    
+    Args:
+        text: Text that may contain emojis
+        max_emojis: Maximum number of emojis to keep (default: 3)
+        
+    Returns:
+        Text with excessive emojis removed
+    """
+    import re
+    # Pattern to match emojis (covers most Unicode emoji ranges)
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map
+        "\U0001F1E0-\U0001F1FF"  # flags
+        "\U00002702-\U000027B0"  # dingbats
+        "\U000024C2-\U0001F251"  # enclosed characters
+        "\U0001F900-\U0001F9FF"  # supplemental symbols
+        "\U00002600-\U000026FF"  # miscellaneous symbols
+        "\U00002700-\U000027BF"  # dingbats
+        "]+", 
+        flags=re.UNICODE
+    )
+    
+    # Find all emoji sequences
+    emojis_found = emoji_pattern.findall(text)
+    
+    if len(emojis_found) <= max_emojis:
+        return text  # No cleaning needed
+    
+    # Remove all emojis first
+    text_no_emojis = emoji_pattern.sub('', text)
+    
+    # Add back only the first max_emojis emojis, preserving spacing
+    emojis_to_keep = emojis_found[:max_emojis]
+    
+    # Try to preserve natural spacing by adding emojis back at the end or where they naturally fit
+    # Simple approach: add them at the end
+    cleaned_text = text_no_emojis.strip()
+    if emojis_to_keep:
+        # Add a space if the text doesn't end with punctuation
+        if cleaned_text and not cleaned_text[-1] in '.,!?;:':
+            cleaned_text += ' '
+        cleaned_text += ' '.join(emojis_to_keep)
+    
+    return cleaned_text.strip()
 
 def post_x_thread_replies(x_client, in_reply_to_tweet_id, reply_messages):
     """
@@ -1940,9 +2252,23 @@ def post_x_thread_replies(x_client, in_reply_to_tweet_id, reply_messages):
         current_reply_id = in_reply_to_tweet_id
         
         for i, reply_text in enumerate(reply_messages):
-            logger.info(f"Posting X reply {i+1}/{len(reply_messages)}: {reply_text[:50]}...")
+            # Clean hashtags first
+            cleaned_reply = clean_hashtags(reply_text)
+            if cleaned_reply != reply_text:
+                logger.warning(f"Removed hashtags from reply {i+1}")
+                logger.debug(f"Original: {reply_text[:100]}...")
+                logger.debug(f"Cleaned: {cleaned_reply[:100]}...")
             
-            result = x_client.post_reply(reply_text, current_reply_id)
+            # Clean excessive emojis before posting
+            cleaned_reply = clean_excessive_emojis(cleaned_reply, max_emojis=3)
+            if cleaned_reply != reply_text:
+                logger.warning(f"Cleaned excessive emojis from reply {i+1}")
+                logger.debug(f"Original: {reply_text[:100]}...")
+                logger.debug(f"Cleaned: {cleaned_reply[:100]}...")
+            
+            logger.info(f"Posting X reply {i+1}/{len(reply_messages)}: {cleaned_reply[:50]}...")
+            
+            result = x_client.post_reply(cleaned_reply, current_reply_id)
             
             if result and 'data' in result:
                 new_tweet_id = result['data']['id']
@@ -2055,6 +2381,26 @@ def process_x_notifications(agent, x_client, testing_mode=False):
     Similar to bsky.py process_notifications but for X.
     """
     try:
+        # Check if we should clear queue on startup (via environment variable)
+        # This is useful when you want to clear old queued mentions after rate limit issues
+        import os
+        clear_queue_flag = os.getenv('CLEAR_X_QUEUE_ON_START', '').lower()
+        if clear_queue_flag == 'true':
+            logger.warning("🧹 CLEAR_X_QUEUE_ON_START is set - clearing queue files...")
+            queue_files = list(X_QUEUE_DIR.glob("x_mention_*.json"))
+            cleared_count = 0
+            for queue_file in queue_files:
+                try:
+                    queue_file.unlink()
+                    cleared_count += 1
+                except Exception as e:
+                    logger.warning(f"Failed to delete {queue_file.name}: {e}")
+            if cleared_count > 0:
+                logger.info(f"✅ Cleared {cleared_count} queue files")
+            else:
+                logger.info("✅ No queue files to clear")
+            logger.info("💡 Remember to set CLEAR_X_QUEUE_ON_START=false after clearing to avoid clearing on every restart")
+        
         # Get username for fetching mentions - uses cached data to avoid rate limits
         username = x_client.get_username()
         if not username:
@@ -2120,7 +2466,13 @@ def initialize_x_agent():
 
     # Get config
     config = get_x_letta_config()
-    client = Letta(token=config['api_key'], timeout=config['timeout'])
+    client_params = {
+        'token': config['api_key'],
+        'timeout': config['timeout']
+    }
+    if config.get('base_url'):
+        client_params['base_url'] = config['base_url']
+    client = Letta(**client_params)
     agent_id = config['agent_id']
     
     try:
@@ -2177,10 +2529,29 @@ def x_main_loop(testing_mode=False, cleanup_interval=10):
     
     # Get Letta client for periodic cleanup
     config = get_x_letta_config()
-    letta_client = Letta(token=config['api_key'], timeout=config['timeout'])
+    client_params = {
+        'token': config['api_key'],
+        'timeout': config['timeout']
+    }
+    if config.get('base_url'):
+        client_params['base_url'] = config['base_url']
+    letta_client = Letta(**client_params)
     
-    # Main loop
-    FETCH_DELAY_SEC = 120  # Check every 2 minutes for X mentions (reduced from 60s to conserve API calls)
+    # Main loop - Get polling interval from environment variable, config, or default to 60s
+    import os
+    from core.config import get_x_config
+    
+    # Try environment variable first, then config.yaml, then default
+    env_polling = os.getenv('X_POLLING_INTERVAL_SEC')
+    if env_polling:
+        FETCH_DELAY_SEC = int(env_polling)
+    else:
+        try:
+            x_config = get_x_config()
+            FETCH_DELAY_SEC = int(x_config.get('polling_interval_sec', 60))
+        except Exception:
+            FETCH_DELAY_SEC = 60  # Default fallback
+    
     logger.info(f"Starting X mention monitoring, checking every {FETCH_DELAY_SEC} seconds")
     
     if testing_mode:
